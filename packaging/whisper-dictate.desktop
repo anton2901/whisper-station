@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Whisper Dictate
+GenericName=Локальная диктовка
+Comment=Запись микрофона, распознавание Whisper и вставка текста в активное окно
+Exec=whisper-dictate
+Icon=whisper-dictate
+Terminal=false
+Categories=Utility;
+Keywords=dictation;whisper;speech;диктовка;распознавание;
+StartupNotify=false
+X-KDE-StartupNotify=false

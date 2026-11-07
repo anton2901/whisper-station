@@ -1,0 +1,52 @@
+# Maintainer: av <av@localhost>
+pkgname=whisper-dictate
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Локальная диктовка для KDE Plasma 6 / Wayland: хоткей, HUD, вставка текста"
+arch=('any')
+url="https://example.invalid/whisper-dictate"
+# Лицензия проекта ещё не выбрана — см. docs/DECISIONS.md.
+license=('custom')
+depends=(
+  'python'
+  'pyside6'
+  'python-dbus'
+  'python-gobject'
+  'pipewire'
+  'libpulse'
+  'wl-clipboard'
+  'libnotify'
+)
+optdepends=(
+  'ydotool: вставка через эмуляцию Ctrl+V (uinput)'
+)
+options=('!strip')
+
+# Пакет собирается из этого каталога: makepkg -f --nocheck
+# Для AUR замените source на архив релиза, например:
+#   source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+source=()
+sha256sums=()
+
+package() {
+  local libdir="$pkgdir/usr/lib/$pkgname"
+
+  install -dm755 "$libdir"
+  cp -a "$startdir/whisper_dictate" "$libdir/"
+  # Байткод не тащим в пакет: он пересоберётся при первом запуске.
+  find "$libdir" -name '__pycache__' -type d -prune -exec rm -rf {} +
+
+  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" <<'WRAPPER'
+#!/bin/sh
+# Обёртка: код лежит в /usr/lib/whisper-dictate, а не в site-packages.
+export PYTHONPATH="/usr/lib/whisper-dictate${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m whisper_dictate "$@"
+WRAPPER
+
+  install -Dm644 "$startdir/packaging/$pkgname.desktop" \
+    "$pkgdir/usr/share/applications/$pkgname.desktop"
+  install -Dm644 "$startdir/packaging/$pkgname.svg" \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
+  install -Dm644 "$startdir/README.md" \
+    "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
