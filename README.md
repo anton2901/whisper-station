@@ -34,7 +34,15 @@ sudo pacman -U whisper-dictate-0.1.0-1-any.pkg.tar.zst
 ```
 
 Пакет кладёт код в `/usr/lib/whisper-dictate`, обёртку — в `/usr/bin/whisper-dictate`,
-`.desktop` и иконку — в `/usr/share`.
+`.desktop` и иконку — в `/usr/share`. После установки:
+
+```sh
+whisper-dictate                    # запустить демон (трей)
+whisper-dictate autostart on       # автозапуск при входе
+```
+
+Автозапуск пишет `~/.config/autostart/whisper-dictate.desktop`
+(`Exec=/usr/bin/whisper-dictate daemon`).
 
 ## Как пользоваться
 

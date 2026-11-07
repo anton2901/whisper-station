@@ -18,7 +18,8 @@
 - [ ] Резервный путь хоткея через `org.freedesktop.portal.GlobalShortcuts` для не-KDE сессий
 - [x] HUD сверху по центру — правилом KWin (wlr-layer-shell KWin не поддерживает)
 - [x] Компактный HUD (300×68) с осциллограммой вместо полоски уровня
-- [x] Запись через `pw-record`: `parec` молчит при выводе в pipe
+- [x] Запись через `pw-record --raw`: `parec` молчит в pipe, а без `--raw` идёт AU/float32
+- [x] Установка пакетом в `/usr/lib/whisper-dictate` и автозапуск при входе
 - [ ] Звуковые сигналы через `libcanberra` вместо `QApplication.beep()`
 - [ ] Команда `whisper-dictate model download` с явным подтверждением
 - [ ] `systemd --user` юнит как альтернатива autostart

@@ -47,6 +47,20 @@ PySide6 6.12.0. Сервер Whisper: `large-v3-turbo`, CUDA float16, `127.0.0.1
 | pw-record + известный звук | виртуальный источник `wd-mic`, `pw-record --raw --target` | `Доброе утро!` — совпало с сэмплом |
 | Галлюцинации на тишине | лог сервера до/после | были `ДИНАМИЧНАЯ МУЗЫКА`, `Субтитры создавал…`; после `--raw` и гейта не воспроизводятся |
 
+## Установка в систему (2026-11-07)
+
+| Проверка | Команда | Результат |
+|---|---|---|
+| Установка | `sudo pacman -U whisper-dictate-0.1.0-1-any.pkg.tar.zst` | `whisper-dictate 0.1.0-1` |
+| Целостность | `pacman -Qk whisper-dictate` | 0 файлов не хватает |
+| Запуск установленной копии | `cd / && whisper-dictate daemon` | демон с `PYTHONPATH=/usr/lib/whisper-dictate`, хоткей активен |
+| Трей | `RegisteredStatusNotifierItems` | иконка принадлежит процессу демона |
+| Автозапуск | `whisper-dictate autostart on` | `~/.config/autostart/whisper-dictate.desktop`, `desktop-file-validate` ок |
+
+По пути найдены и исправлены две ошибки упаковки: репозиторий с umask 600/700 ставился
+нечитаемым для пользователя (Python видел namespace-пакет), а `doctor` считал
+отсутствующий `ydotoold` проблемой.
+
 ## Не проверено
 
 - Физическое нажатие клавиши человеком (использовалось синтетическое событие через uinput).
