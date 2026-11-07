@@ -35,6 +35,10 @@ package() {
   cp -a "$startdir/whisper_dictate" "$libdir/"
   # Байткод не тащим в пакет: он пересоберётся при первом запуске.
   find "$libdir" -name '__pycache__' -type d -prune -exec rm -rf {} +
+  # Репозиторий может иметь строгий umask (600/700) — в пакете права должны
+  # быть обычными, иначе пользователь не прочитает модули.
+  find "$libdir" -type d -exec chmod 755 {} +
+  find "$libdir" -type f -exec chmod 644 {} +
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" <<'WRAPPER'
 #!/bin/sh

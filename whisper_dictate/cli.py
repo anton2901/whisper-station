@@ -131,7 +131,11 @@ def cmd_doctor(cfg: Config) -> int:
         ("буфер", "wl-copy/wl-paste" if env["wl_clipboard"] else "не найден", bool(env["wl_clipboard"])),
         ("ydotool", "найден" if env["ydotool"] else "не найден", bool(env["ydotool"])),
         ("uinput", "доступен на запись" if env["uinput"] else "нет доступа", bool(env["uinput"])),
-        ("ydotoold", str(env["ydotoold_socket"] or "не запущен"), bool(env["ydotoold_socket"])),
+        (
+            "ydotoold",
+            str(env["ydotoold_socket"] or ("поднимется при вставке" if env["uinput"] else "нет")),
+            bool(env["ydotoold_socket"]) or bool(env["uinput"]),
+        ),
         ("kglobalaccel", "есть" if kga else "нет", kga),
         ("сервер", server.describe(), server.ok),
         ("команда сервера", command or "не найдена", bool(command)),
