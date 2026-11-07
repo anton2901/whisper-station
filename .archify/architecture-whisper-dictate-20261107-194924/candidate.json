@@ -1,0 +1,389 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "whisper-dictate: локальная диктовка",
+    "subtitle": "KDE Plasma 6 / Wayland, всё в пределах 127.0.0.1",
+    "quality_profile": "showcase",
+    "output": ".archify/architecture-whisper-dictate-20261107-194924/whisper-dictate.html",
+    "repository": {
+      "url": "https://example.invalid/av-wisper-linux",
+      "link_mode": "local-only",
+      "revision": "58a0bce694f90b639d180473c0d31227b414a056"
+    }
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Пользователь",
+      "sublabel": "хоткей + речь",
+      "pos": [
+        30,
+        320
+      ],
+      "size": [
+        120,
+        64
+      ]
+    },
+    {
+      "id": "hotkey",
+      "type": "backend",
+      "label": "Слушатель хоткея",
+      "sublabel": "org.kde.kglobalaccel",
+      "tag": "Meta+Alt+D",
+      "pos": [
+        250,
+        320
+      ],
+      "size": [
+        180,
+        64
+      ],
+      "sources": [
+        {
+          "path": "whisper_dictate/hotkey.py",
+          "line": 97,
+          "end_line": 123,
+          "label": "регистрация"
+        },
+        {
+          "path": "whisper_dictate/hotkey.py",
+          "line": 162,
+          "end_line": 210,
+          "label": "подписка на сигнал"
+        }
+      ]
+    },
+    {
+      "id": "controller",
+      "type": "backend",
+      "label": "Контроллер",
+      "sublabel": "idle → recording → transcribing",
+      "pos": [
+        520,
+        316
+      ],
+      "size": [
+        190,
+        72
+      ],
+      "sources": [
+        {
+          "path": "whisper_dictate/controller.py",
+          "line": 29,
+          "end_line": 90,
+          "label": "состояния"
+        },
+        {
+          "path": "whisper_dictate/controller.py",
+          "line": 173,
+          "end_line": 215,
+          "label": "распознавание и вставка"
+        }
+      ]
+    },
+    {
+      "id": "stt",
+      "type": "backend",
+      "label": "STT-клиент",
+      "sublabel": "multipart + ретрай",
+      "pos": [
+        800,
+        320
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "whisper_dictate/stt.py",
+          "line": 117,
+          "end_line": 141,
+          "label": "transcribe"
+        },
+        {
+          "path": "whisper_dictate/stt.py",
+          "line": 84,
+          "end_line": 90,
+          "label": "фильтр галлюцинаций"
+        }
+      ]
+    },
+    {
+      "id": "server",
+      "type": "external",
+      "label": "faster-whisper",
+      "sublabel": "127.0.0.1:8765",
+      "pos": [
+        1080,
+        120
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "frontend",
+      "label": "Qt-оболочка",
+      "sublabel": "трей, IPC, автозапуск",
+      "pos": [
+        430,
+        120
+      ],
+      "size": [
+        190,
+        64
+      ],
+      "sources": [
+        {
+          "path": "whisper_dictate/app.py",
+          "line": 58,
+          "end_line": 160,
+          "label": "трей и IPC"
+        },
+        {
+          "path": "whisper_dictate/app.py",
+          "line": 225,
+          "end_line": 245,
+          "label": "правило HUD"
+        }
+      ]
+    },
+    {
+      "id": "hud",
+      "type": "frontend",
+      "label": "HUD",
+      "sublabel": "осциллограмма, Esc",
+      "tag": "правило KWin",
+      "pos": [
+        240,
+        520
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "sources": [
+        {
+          "path": "whisper_dictate/hud.py",
+          "line": 45,
+          "end_line": 95,
+          "label": "окно"
+        },
+        {
+          "path": "whisper_dictate/hud.py",
+          "line": 117,
+          "end_line": 125,
+          "label": "полосы волны"
+        }
+      ]
+    },
+    {
+      "id": "recorder",
+      "type": "backend",
+      "label": "pw-record",
+      "sublabel": "16 кГц моно PCM16",
+      "tag": "--raw",
+      "pos": [
+        500,
+        520
+      ],
+      "size": [
+        190,
+        68
+      ],
+      "sources": [
+        {
+          "path": "whisper_dictate/recorder.py",
+          "line": 103,
+          "end_line": 130,
+          "label": "команда захвата"
+        },
+        {
+          "path": "whisper_dictate/recorder.py",
+          "line": 205,
+          "end_line": 240,
+          "label": "стоп и WAV"
+        }
+      ]
+    },
+    {
+      "id": "inject",
+      "type": "backend",
+      "label": "Вставка текста",
+      "sublabel": "буфер + Ctrl+V",
+      "tag": "uinput",
+      "pos": [
+        800,
+        520
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "whisper_dictate/inject.py",
+          "line": 295,
+          "end_line": 340,
+          "label": "стратегии вставки"
+        },
+        {
+          "path": "whisper_dictate/inject.py",
+          "line": 133,
+          "end_line": 150,
+          "label": "свой ydotoold"
+        }
+      ]
+    },
+    {
+      "id": "target",
+      "type": "external",
+      "label": "Активное окно",
+      "sublabel": "KDE Wayland",
+      "pos": [
+        1080,
+        520
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "pipewire",
+      "type": "external",
+      "label": "PipeWire",
+      "sublabel": "источник звука",
+      "pos": [
+        500,
+        700
+      ],
+      "size": [
+        190,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "процесс whisper-dictate (Python + Qt)",
+      "wraps": [
+        "hotkey",
+        "controller",
+        "stt",
+        "shell",
+        "hud",
+        "recorder",
+        "inject"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-hotkey",
+      "from": "user",
+      "to": "hotkey",
+      "label": "Meta+Alt+D",
+      "variant": "emphasis"
+    },
+    {
+      "id": "hotkey-controller",
+      "from": "hotkey",
+      "to": "controller",
+      "label": "активация"
+    },
+    {
+      "id": "controller-stt",
+      "from": "controller",
+      "to": "stt",
+      "label": "WAV 16 кГц"
+    },
+    {
+      "id": "stt-server",
+      "from": "stt",
+      "to": "server",
+      "label": "POST /v1/audio/transcriptions"
+    },
+    {
+      "id": "controller-inject",
+      "from": "controller",
+      "to": "inject",
+      "label": "текст"
+    },
+    {
+      "id": "inject-target",
+      "from": "inject",
+      "to": "target",
+      "label": "Ctrl+V + буфер"
+    },
+    {
+      "id": "controller-recorder",
+      "from": "controller",
+      "to": "recorder",
+      "label": "старт / стоп"
+    },
+    {
+      "id": "recorder-pipewire",
+      "from": "recorder",
+      "to": "pipewire",
+      "label": "захват 16 кГц"
+    },
+    {
+      "id": "controller-hud",
+      "from": "controller",
+      "to": "hud",
+      "label": "показ + уровень"
+    },
+    {
+      "id": "shell-controller",
+      "from": "shell",
+      "to": "controller",
+      "label": "IPC: toggle / quit"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Путь одной диктовки",
+      "items": [
+        "Хоткей регистрируется в KGlobalAccel, повторное нажатие останавливает запись",
+        "HUD забирает фокус на время записи и прячется перед вставкой, чтобы фокус вернулся в окно",
+        "Esc отменяет запись без вставки"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Всё локально",
+      "items": [
+        "HTTP только на 127.0.0.1:8765, внешних вызовов нет",
+        "Аудио живёт в памяти, на диск не пишется",
+        "Чужой сервер не убивается: если порт занят, он переиспользуется"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Защита от мусорного текста",
+      "items": [
+        "Гейт тишины: пик ниже 0.008 — распознавание не запускается",
+        "Нормализация громкости до пика 0.6 перед отправкой",
+        "Отбрасываются типовые галлюцинации Whisper про субтитры и музыку"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Где лежит состояние",
+      "items": [
+        "Настройки: ~/.config/whisper-dictate/config.toml",
+        "Позиция HUD: правило KWin 991001 в kwinrulesrc (positionrule=2)",
+        "Автозапуск: ~/.config/autostart/whisper-dictate.desktop"
+      ]
+    }
+  ]
+}

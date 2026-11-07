@@ -94,3 +94,6 @@ rm -rf ~/.config/whisper-dictate ~/.local/state/whisper-dictate
 ```
 
 Архитектура и решения — `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, проверки — `docs/VERIFICATION.md`.
+
+Схема архитектуры (интерактивный HTML, генерируется Archify из `candidate.json`):
+`.archify/architecture-whisper-dictate-20261107-194924/whisper-dictate.html`.

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/home/av/Documents/av-wisper-linux/.archify/architecture-whisper-dictate-20261107-194924/candidate.json",
+    "sha256": "563cb9d73c9c3a8c4ea9e92f09de12c980477c7156eba8f0f743139c8973cdeb",
+    "bytes": 9103
+  },
+  "artifact": {
+    "path": "/home/av/Documents/av-wisper-linux/.archify/architecture-whisper-dictate-20261107-194924/whisper-dictate.html",
+    "sha256": "7b7880e61c648b28c51102e59a0eb77bcd251fddf5c6118fc849d22f4fb55f0c",
+    "bytes": 770101
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/home/av/Documents/av-wisper-linux/.archify/architecture-whisper-dictate-20261107-194924/whisper-dictate.finalize.json",
+    "summaryReceipt": "/home/av/Documents/av-wisper-linux/.archify/architecture-whisper-dictate-20261107-194924/whisper-dictate.finalize-summary.json",
+    "browserCheckReceipt": "/home/av/Documents/av-wisper-linux/.archify/architecture-whisper-dictate-20261107-194924/whisper-dictate.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "cache-valid"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 1845
+}

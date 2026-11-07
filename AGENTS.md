@@ -32,3 +32,5 @@ makepkg -f    # сборка пакета (без установки)
 - `ydotoold` запускается от пользователя; права, группы и `uinput` не настраивать.
 - Перед PR/коммитом: `make lint && make test`. Красные тесты не коммитить.
 - Конфиг — только через `config.py`; путь `~/.config/whisper-dictate/config.toml`.
+- Диаграммы Archify — в `.archify/<type>-<slug>-<время>/`: `candidate.json` и HTML коммитим,
+  `visual-check/` (скриншоты) — генерируемый артефакт, он в `.gitignore`.
