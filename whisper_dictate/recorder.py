@@ -24,7 +24,7 @@ SAMPLE_RATE = 16000
 SAMPLE_WIDTH = 2
 CHANNELS = 1
 CHUNK_BYTES = 3200  # 100 мс
-LEVEL_CEILING = 0.25  # RMS, выше которого индикатор считаем «на максимуме»
+LEVEL_FLOOR_DB = -55.0  # ниже этого уровня индикатор пуст
 
 
 class RecorderError(RuntimeError):
@@ -45,6 +45,20 @@ def pcm_to_wav(
         handle.setframerate(rate)
         handle.writeframes(pcm)
     return buffer.getvalue()
+
+
+def pcm_level(pcm: bytes, floor_db: float = LEVEL_FLOOR_DB) -> float:
+    """Уровень для индикатора: RMS в дБFS, 0 — тишина, 1 — громко.
+
+    Линейный RMS у речи очень маленький (0.02–0.1), поэтому индикатор
+    на линейной шкале почти не двигался. dBFS с полом −55 дБ даёт
+    нормальный диапазон для шёпота и обычной речи.
+    """
+    rms = pcm_rms(pcm)
+    if rms <= 1e-6:
+        return 0.0
+    dbfs = 20.0 * math.log10(rms)
+    return max(0.0, min(1.0, (dbfs - floor_db) / -floor_db))
 
 
 def pcm_rms(pcm: bytes) -> float:
@@ -153,7 +167,7 @@ class Recorder:
                     self._buffer += chunk
                 if self.on_level is not None:
                     try:
-                        self.on_level(min(1.0, pcm_rms(chunk) / LEVEL_CEILING))
+                        self.on_level(pcm_level(chunk))
                     except Exception:  # noqa: BLE001 - индикатор не должен ронять запись
                         log.debug("recorder: on_level упал", exc_info=True)
         finally:

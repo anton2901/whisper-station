@@ -11,11 +11,11 @@ import sys
 import threading
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtGui import QAction, QDesktopServices
+from PySide6.QtGui import QAction, QDesktopServices, QGuiApplication
 from PySide6.QtNetwork import QLocalServer
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from . import APP_NAME, APP_TITLE, __version__, autostart as autostart_mod, icons, ipc, paths
+from . import APP_NAME, APP_TITLE, __version__, autostart as autostart_mod, icons, ipc, paths, rules
 from .config import Config, save
 from .controller import RECORDING, STARTING, TRANSCRIBING, Controller
 from .hotkey import GlobalHotkey, HotkeyError, kglobalaccel_available
@@ -75,6 +75,7 @@ class WhisperDictate(QObject):
         self._build_tray()
         self._wire()
         self._start_ipc()
+        self._sync_hud_rule()
         self._register_hotkey(force=False)
         QTimer.singleShot(400, self._check_server_async)
 
@@ -220,6 +221,20 @@ class WhisperDictate(QObject):
         self.tray.setToolTip(f"{APP_TITLE}: {effective}")
         return True
 
+    # --- позиция HUD ----------------------------------------------------
+    def _sync_hud_rule(self) -> None:
+        """Закрепить HUD сверху по центру правилом KWin (Wayland иначе нельзя)."""
+        if not self.cfg.hud_pin_top:
+            rules.remove_rule()
+            return
+        screen = QGuiApplication.primaryScreen()
+        if screen is None:
+            return
+        area = screen.geometry()
+        x, y = rules.hud_position(area.x(), area.y(), area.width())
+        if not rules.ensure_rule(x, y):
+            log.info("hud: правило KWin недоступно, позицию выберет композитор")
+
     # --- обработчики ----------------------------------------------------
     def _on_state_changed(self, state: str) -> None:
         self.tray.setIcon(icons.tray_icon(STATE_ICONS.get(state, "idle")))
@@ -285,6 +300,7 @@ class WhisperDictate(QObject):
         self.controller.cfg = cfg
         save(cfg)
         autostart_mod.apply(cfg.autostart)
+        self._sync_hud_rule()
         if not self._register_hotkey(force=True):
             self._notify("Настройки сохранены", "Но хоткей применить не удалось", "normal")
             return

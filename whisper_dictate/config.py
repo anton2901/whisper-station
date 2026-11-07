@@ -46,6 +46,7 @@ SECTIONS: dict[str, dict[str, str]] = {
     "ui": {
         "beep": "beep",
         "show_hud": "show_hud",
+        "hud_pin_top": "hud_pin_top",
         "autostart": "autostart",
         "log_level": "log_level",
     },
@@ -75,6 +76,7 @@ COMMENTS = {
     "ui": {
         "beep": "звуковой сигнал старта и остановки",
         "show_hud": "показывать HUD во время записи",
+        "hud_pin_top": "держать HUD сверху по центру (правило KWin)",
         "autostart": "запускать при входе в сессию",
         "log_level": "DEBUG, INFO, WARNING или ERROR",
     },
@@ -99,6 +101,7 @@ class Config:
     max_seconds: float = 120.0
     beep: bool = True
     show_hud: bool = True
+    hud_pin_top: bool = True
     autostart: bool = False
     log_level: str = "INFO"
 

@@ -19,6 +19,9 @@ MUTED = QColor(160, 162, 170)
 ACCENT = QColor("#7fb2ff")
 LEVEL = QColor("#8ee08e")
 
+# Заголовок — маркер для правила KWin; окно настроек его не содержит.
+TITLE = "Whisper Dictate HUD"
+
 
 class Hud(QWidget):
     stop_requested = Signal()
@@ -33,7 +36,7 @@ class Hud(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setWindowTitle("Whisper Dictate")
+        self.setWindowTitle(TITLE)
         self.resize(360, 104)
         self.setMinimumSize(320, 96)
 
@@ -101,8 +104,10 @@ class Hud(QWidget):
 
     # --- события --------------------------------------------------------
     def _on_tick(self) -> None:
-        self._shown_level += (self._level - self._shown_level) * 0.45
-        self._level = max(0.0, self._level - 0.02)
+        # Атака быстрая, спад плавный: индикатор успевает за слогами речи.
+        factor = 0.75 if self._level > self._shown_level else 0.28
+        self._shown_level += (self._level - self._shown_level) * factor
+        self._level = max(0.0, self._level - 0.04)
         self.update()
 
     def _place(self) -> None:

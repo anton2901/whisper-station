@@ -16,7 +16,7 @@
 
 - [ ] Push-to-talk (удержание хоткея) — нужен `globalShortcutReleased`, проверить на KWin
 - [ ] Резервный путь хоткея через `org.freedesktop.portal.GlobalShortcuts` для не-KDE сессий
-- [ ] HUD через `gtk4-layer-shell`/LayerShellQt — если появится в репозиториях
+- [x] HUD сверху по центру — правилом KWin (wlr-layer-shell KWin не поддерживает)
 - [ ] Звуковые сигналы через `libcanberra` вместо `QApplication.beep()`
 - [ ] Команда `whisper-dictate model download` с явным подтверждением
 - [ ] `systemd --user` юнит как альтернатива autostart

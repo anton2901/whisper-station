@@ -14,6 +14,7 @@ from whisper_dictate.config import Config
 from whisper_dictate.recorder import (
     Recorder,
     RecorderError,
+    pcm_level,
     pcm_rms,
     pcm_to_wav,
     wav_duration,
@@ -46,6 +47,22 @@ class WavHelpersTest(unittest.TestCase):
         loud = (30000).to_bytes(2, "little", signed=True) * 100
         self.assertGreater(pcm_rms(loud), 0.8)
         self.assertEqual(pcm_rms(b""), 0.0)
+
+    def test_pcm_level_uses_db_scale(self) -> None:
+        self.assertEqual(pcm_level(b"\x00\x00" * 100), 0.0)
+
+        def constant(amplitude: int) -> bytes:
+            return amplitude.to_bytes(2, "little", signed=True) * 400
+
+        quiet = pcm_level(constant(300))  # около -41 dBFS
+        normal = pcm_level(constant(3000))  # около -21 dBFS
+        loud = pcm_level(constant(20000))  # около -4 dBFS
+        self.assertGreater(quiet, 0.15)
+        self.assertLess(quiet, 0.35)
+        self.assertGreater(normal, quiet)
+        self.assertGreater(normal, 0.4)
+        self.assertGreater(loud, normal)
+        self.assertLessEqual(loud, 1.0)
 
 
 class RecorderProcessTest(unittest.TestCase):
