@@ -5,7 +5,6 @@ from __future__ import annotations
 import array
 import io
 import logging
-import math
 import shutil
 import signal
 import subprocess
@@ -24,7 +23,6 @@ SAMPLE_RATE = 16000
 SAMPLE_WIDTH = 2
 CHANNELS = 1
 CHUNK_BYTES = 3200  # 100 мс
-LEVEL_FLOOR_DB = -55.0  # ниже этого уровня индикатор пуст
 
 
 class RecorderError(RuntimeError):
@@ -47,39 +45,33 @@ def pcm_to_wav(
     return buffer.getvalue()
 
 
-def pcm_level(pcm: bytes, floor_db: float = LEVEL_FLOOR_DB) -> float:
-    """Уровень для индикатора: RMS в дБFS, 0 — тишина, 1 — громко.
-
-    Линейный RMS у речи очень маленький (0.02–0.1), поэтому индикатор
-    на линейной шкале почти не двигался. dBFS с полом −55 дБ даёт
-    нормальный диапазон для шёпота и обычной речи.
-    """
-    rms = pcm_rms(pcm)
-    if rms <= 1e-6:
-        return 0.0
-    dbfs = 20.0 * math.log10(rms)
-    return max(0.0, min(1.0, (dbfs - floor_db) / -floor_db))
-
-
-def pcm_rms(pcm: bytes) -> float:
-    """Среднеквадратичный уровень куска PCM16 в диапазоне 0..1."""
+def pcm_bands(pcm: bytes, count: int = 16) -> list[tuple[float, float]]:
+    """Разбить кусок PCM на полосы (min, max) в диапазоне −1..1 — для осциллограммы."""
     usable = len(pcm) - (len(pcm) % 2)
     if usable <= 0:
-        return 0.0
+        return []
     samples = array.array("h")
     samples.frombytes(pcm[:usable])
-    total = sum(sample * sample for sample in samples)
-    if not total:
-        return 0.0
-    return min(1.0, math.sqrt(total / len(samples)) / 32768.0)
+    step = max(1, len(samples) // count)
+    bands: list[tuple[float, float]] = []
+    for start in range(0, len(samples) - step + 1, step):
+        piece = samples[start : start + step]
+        if not piece:
+            break
+        bands.append((max(-1.0, min(piece) / 32768.0), min(1.0, max(piece) / 32768.0)))
+    return bands
 
 
 class Recorder:
     """Процесс записи с чтением stdout в отдельном потоке."""
 
-    def __init__(self, cfg: Config, on_level: Callable[[float], None] | None = None) -> None:
+    def __init__(
+        self,
+        cfg: Config,
+        on_wave: Callable[[list[tuple[float, float]]], None] | None = None,
+    ) -> None:
         self.cfg = cfg
-        self.on_level = on_level
+        self.on_wave = on_wave
         self._proc: subprocess.Popen[bytes] | None = None
         self._thread: threading.Thread | None = None
         self._buffer = bytearray()
@@ -102,7 +94,8 @@ class Recorder:
             if shutil.which(self.cfg.audio_backend) is None:
                 raise RecorderError(f"{self.cfg.audio_backend} не найден в PATH")
             return self.cfg.audio_backend
-        for candidate in ("parec", "pw-record"):
+        # pw-record первым: parec на PipeWire молчит, если stdout — pipe.
+        for candidate in ("pw-record", "parec"):
             if shutil.which(candidate):
                 return candidate
         raise RecorderError("Не найден ни parec, ни pw-record: записи не будет")
@@ -165,11 +158,11 @@ class Recorder:
                     break
                 with self._lock:
                     self._buffer += chunk
-                if self.on_level is not None:
+                if self.on_wave is not None:
                     try:
-                        self.on_level(pcm_level(chunk))
-                    except Exception:  # noqa: BLE001 - индикатор не должен ронять запись
-                        log.debug("recorder: on_level упал", exc_info=True)
+                        self.on_wave(pcm_bands(chunk))
+                    except Exception:  # noqa: BLE001
+                        log.debug("recorder: on_wave упал", exc_info=True)
         finally:
             try:
                 stream.close()
@@ -216,8 +209,11 @@ class Recorder:
         stderr = self.read_stderr()
         self._cleanup()
         if not raw:
-            detail = f": {stderr[-400:]}" if stderr else ""
-            raise RecorderError(f"Микрофон не дал данных (код {returncode}){detail}")
+            if returncode not in (0, -signal.SIGINT, 130):
+                detail = f": {stderr[-400:]}" if stderr else ""
+                raise RecorderError(f"Микрофон не дал данных (код {returncode}){detail}")
+            log.warning("recorder: за запись не пришло ни одного сэмпла")
+            return pcm_to_wav(b"")
         if returncode not in (0, -signal.SIGINT, 130) and len(raw) < CHUNK_BYTES:
             raise RecorderError(
                 f"Запись прервалась (код {returncode})"

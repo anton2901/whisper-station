@@ -9,7 +9,7 @@
 Проверено на CachyOS (Arch-based), KDE Plasma 6.8, Wayland:
 
 - Python 3.12+ с `PySide6`, `dbus-python`, `PyGObject` (`pyside6 python-dbus python-gobject`);
-- `pipewire`/`libpulse` (`parec`), `wl-clipboard`, `libnotify`;
+- `pipewire` (`pw-record`; `parec` — запасной вариант), `wl-clipboard`, `libnotify`;
 - сервер распознавания на `127.0.0.1:8765` (OpenAI-совместимый, faster-whisper);
 - `ydotool` и доступ к `/dev/uinput` — для вставки через Ctrl+V (на CachyOS ACL уже есть).
 
@@ -39,7 +39,8 @@ sudo pacman -U whisper-dictate-0.1.0-1-any.pkg.tar.zst
 ## Как пользоваться
 
 1. Запустите `whisper-dictate` (трей) — или включите автозапуск в настройках.
-2. Нажмите `Meta+Alt+D`, говорите, нажмите ещё раз. Появится HUD с уровнем и таймером.
+2. Нажмите `Meta+Alt+D`, говорите, нажмите ещё раз. Появится компактный HUD
+   с осциллограммой голоса и таймером.
 3. Текст распознаётся и вставляется в активное окно (буфер + Ctrl+V).
 4. `Esc` в HUD — отмена без вставки; кнопки «Стоп»/«Отмена» делают то же самое.
 
@@ -69,7 +70,10 @@ sudo pacman -U whisper-dictate-0.1.0-1-any.pkg.tar.zst
 - Позиция HUD задаётся правилом KWin «Whisper Dictate HUD» (верх экрана по центру):
   Wayland не позволяет клиенту двигать окна. Правило видно и удаляется в
   System Settings → Window Rules; отключается галочкой в настройках приложения.
-- Индикатор уровня — в дБFS: обычная речь занимает ~40–70 % шкалы.
+- Запись идёт через `pw-record`: `parec` на PipeWire не отдаёт данные, если stdout — pipe
+  (в файл пишет нормально), поэтому он оставлен только как запасной вариант.
+- Короткое нажатие хоткея (меньше 0.25 с) и тишина не считаются ошибкой и не показывают
+  уведомлений — только реальные сбои.
 - Восстановление буфера отложено на 1.5 с: Wayland отдаёт данные вставки асинхронно.
 - Трей — StatusNotifierItem средствами Qt; на KDE работает без `libayatana-appindicator`.
 

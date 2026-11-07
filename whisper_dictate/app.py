@@ -116,7 +116,7 @@ class WhisperDictate(QObject):
         self.tray.activated.connect(self._on_tray_activated)
 
         self.controller.state_changed.connect(self._on_state_changed)
-        self.controller.level_changed.connect(self.hud.set_level)
+        self.controller.wave_changed.connect(self.hud.append_bands)
         self.hud.stop_requested.connect(self.controller.stop)
         self.hud.cancel_requested.connect(self.controller.cancel)
         self.controller.notify_requested.connect(self._notify)

@@ -17,6 +17,8 @@
 - [ ] Push-to-talk (удержание хоткея) — нужен `globalShortcutReleased`, проверить на KWin
 - [ ] Резервный путь хоткея через `org.freedesktop.portal.GlobalShortcuts` для не-KDE сессий
 - [x] HUD сверху по центру — правилом KWin (wlr-layer-shell KWin не поддерживает)
+- [x] Компактный HUD (300×68) с осциллограммой вместо полоски уровня
+- [x] Запись через `pw-record`: `parec` молчит при выводе в pipe
 - [ ] Звуковые сигналы через `libcanberra` вместо `QApplication.beep()`
 - [ ] Команда `whisper-dictate model download` с явным подтверждением
 - [ ] `systemd --user` юнит как альтернатива autostart

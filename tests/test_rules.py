@@ -25,6 +25,14 @@ class PositionTest(unittest.TestCase):
         self.assertEqual(x, 0)
 
 
+class SizeTest(unittest.TestCase):
+    def test_matches_hud_size(self) -> None:
+        from whisper_dictate import hud
+
+        self.assertEqual(rules.HUD_WIDTH, hud.WIDTH)
+        self.assertEqual(rules.HUD_HEIGHT, hud.HEIGHT)
+
+
 class RuleIdsTest(unittest.TestCase):
     def test_parse(self) -> None:
         self.assertEqual(rules.rule_ids(""), [])

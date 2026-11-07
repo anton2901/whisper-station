@@ -20,9 +20,9 @@ HUD_TITLE = "Whisper Dictate HUD"
 RULE_ID = 991001
 CONFIG_NAME = "kwinrulesrc"
 
-HUD_WIDTH = 360
-HUD_HEIGHT = 104
-MARGIN_TOP = 48
+HUD_WIDTH = 300   # должно совпадать с hud.WIDTH
+HUD_HEIGHT = 68   # должно совпадать с hud.HEIGHT
+MARGIN_TOP = 72   # ниже верхней панели Plasma, чтобы не срабатывало автоскрытие
 
 
 def hud_position(screen_x: int, screen_y: int, screen_width: int) -> tuple[int, int]:

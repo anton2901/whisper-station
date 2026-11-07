@@ -25,7 +25,7 @@ class Controller(QObject):
     """Управляет записью, распознаванием и вставкой. Вся работа с Qt — в главном потоке."""
 
     state_changed = Signal(str)
-    level_changed = Signal(float)
+    wave_changed = Signal(object)  # полосы осциллограммы (min, max)
     server_status = Signal(object)
     notify_requested = Signal(str, str, str)  # заголовок, текст, важность
 
@@ -91,6 +91,13 @@ class Controller(QObject):
             self._on_error(str(exc))
             return
         duration = wav_duration(wav)
+        if duration < 0.25:
+            # Быстрый двойной тап по хоткею — это не ошибка, молчим.
+            if self._hud is not None:
+                self._hud.finish()
+            self._set_state(IDLE)
+            log.info("controller: запись %.2f с, слишком коротко — пропускаю", duration)
+            return
         if duration < self.cfg.min_seconds:
             if self._hud is not None:
                 self._hud.finish()
@@ -156,7 +163,7 @@ class Controller(QObject):
         if self.state != STARTING:
             return
         self.server_status.emit(status)
-        recorder = Recorder(self.cfg, on_level=self.level_changed.emit)
+        recorder = Recorder(self.cfg, on_wave=self.wave_changed.emit)
         try:
             recorder.start()
         except RecorderError as exc:
@@ -178,9 +185,9 @@ class Controller(QObject):
         if not text.strip():
             self._set_state(IDLE)
             self.notify_requested.emit(
-                "Речь не распознана",
-                "Тишина или слишком тихая речь — попробуйте ещё раз",
-                "normal",
+                "Ничего не распознано",
+                "Похоже, была тишина — попробуйте ещё раз",
+                "low",
             )
             return
         log.info("controller: распознано за %d мс", elapsed_ms)

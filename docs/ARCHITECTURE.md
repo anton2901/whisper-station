@@ -12,7 +12,7 @@ Whisper на `127.0.0.1:8765`, буфер обмена, вставка чере�
 |---|---|---|
 | `app.py` | `QApplication`, трей, IPC-сокет, хоткей, окно настроек | знает про Qt и сигналы |
 | `controller.py` | состояния: idle → starting → recording → transcribing → idle | не трогает Qt-виджеты напрямую |
-| `recorder.py` | `parec`/`pw-record` → WAV 16 кГц моно PCM16, уровень сигнала | один процесс записи за раз |
+| `recorder.py` | `pw-record`/`parec` → WAV 16 кГц моно PCM16, полосы осциллограммы | один процесс записи за раз |
 | `stt.py` | multipart-запрос к `/v1/audio/transcriptions`, таймауты, ретрай | только loopback |
 | `inject.py` | буфер `wl-copy`/`wl-paste`, Ctrl+V через `ydotool`, свой `ydotoold` | не меняет права в системе |
 | `hotkey.py` | регистрация в `org.kde.kglobalaccel`, поток `dbus-python` | одна комбинация на действие |
@@ -26,7 +26,7 @@ Whisper на `127.0.0.1:8765`, буфер обмена, вставка чере�
 ```
 hotkey ──► controller.start ──► service.ensure (сервер) ──► recorder.start
                                                               │ parec
-HUD ◄── level_changed ◄───────────────────────────────────────┘
+HUD ◄── wave_changed (полосы min/max) ◄───────────────────────┘
 hotkey ──► controller.stop ──► recorder.stop (WAV) ──► stt.transcribe ──► inject_text
                                                                           │ wl-copy
                                                                           │ ydotool Ctrl+V
