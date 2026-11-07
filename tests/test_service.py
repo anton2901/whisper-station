@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import http.server
 import json
+import os
 import threading
 import unittest
+from unittest import mock
 
+from whisper_dictate import service
 from whisper_dictate.config import Config
 from whisper_dictate.service import ServerManager, ServerStatus, health
 from whisper_dictate.stt import ServerUnavailable
@@ -100,6 +103,34 @@ class ServerManagerTest(unittest.TestCase):
         cfg = Config(server_url="http://127.0.0.1:9", server_command="/nonexistent/run.sh")
         with self.assertRaises(ServerUnavailable):
             ServerManager(cfg).ensure(timeout=2.0)
+
+    def test_spawn_sets_own_parent_pid(self) -> None:
+        cfg = Config(server_command="/bin/true")
+        manager = ServerManager(cfg)
+        captured: dict[str, object] = {}
+
+        class FakeProc:
+            pid = 1
+            returncode = None
+
+            def poll(self) -> None:
+                return None
+
+            def terminate(self) -> None:
+                self.returncode = 0
+
+            def wait(self, timeout: float | None = None) -> int:
+                return 0
+
+        def fake_popen(argv, **kwargs):  # noqa: ANN001, ANN003
+            captured["env"] = kwargs.get("env")
+            return FakeProc()
+
+        with mock.patch.object(service.subprocess, "Popen", fake_popen):
+            manager.spawn()
+            manager.stop_owned()
+        env = captured.get("env") or {}
+        self.assertEqual(env.get("WHISPER_PARENT_PID"), str(os.getpid()))
 
     def test_status_describe(self) -> None:
         self.assertIn("cuda", ServerStatus(ok=True, device="cuda", model="m").describe())

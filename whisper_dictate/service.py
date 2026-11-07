@@ -101,7 +101,9 @@ class ServerManager:
             cwd = str(path.parent)
         self._stderr = tempfile.NamedTemporaryFile(prefix="whisper-server-", suffix=".log")
         env = dict(os.environ)
-        env.setdefault("WHISPER_PARENT_PID", str(os.getpid()))
+        # Всегда свой pid: унаследованный WHISPER_PARENT_PID (например, от DSH)
+        # заставил бы наш сервер следить за чужим процессом.
+        env["WHISPER_PARENT_PID"] = str(os.getpid())
         log.info("server: запускаю %r (cwd=%s)", command, cwd)
         try:
             self._proc = subprocess.Popen(  # noqa: S603 - команда из конфига пользователя
