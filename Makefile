@@ -12,7 +12,7 @@ help:
 	@echo "make package  — собрать пакет через PKGBUILD"
 
 run:
-	PYTHONPATH=$(SRC) $(PYTHON) -m whisper_dictate
+	PYTHONPATH=$(SRC) $(PYTHON) -m whisper_dictate daemon
 
 daemon:
 	bin/whisper-dictate daemon
