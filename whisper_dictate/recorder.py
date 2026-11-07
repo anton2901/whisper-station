@@ -113,6 +113,9 @@ class Recorder:
             ]
         args = [
             "pw-record",
+            # --raw обязателен: иначе pw-record пишет контейнер .snd (AU)
+            # с float32, и в модель уходит шум вместо речи.
+            "--raw",
             "--format=s16",
             f"--rate={SAMPLE_RATE}",
             f"--channels={CHANNELS}",
@@ -258,6 +261,53 @@ def wav_duration(wav: bytes) -> float:
     except (wave.Error, EOFError):
         return 0.0
     return frames / rate if rate else 0.0
+
+
+def normalize_pcm(wav: bytes, target: float = 0.6, max_gain: float = 10.0) -> bytes:
+    """Поднять тихую запись до нормального уровня (без клиппинга).
+
+    Микрофон в PipeWire часто пишет с низким уровнем (пик 0.004–0.05),
+    и Whisper на таком звуке «додумывает» текст. Усиление до 0.6 по пику
+    делает речь отчётливой.
+    """
+    try:
+        with wave.open(io.BytesIO(wav), "rb") as handle:
+            params = handle.getparams()
+            frames = handle.readframes(handle.getnframes())
+    except (wave.Error, EOFError):
+        return wav
+    usable = len(frames) - (len(frames) % 2)
+    if usable <= 0:
+        return wav
+    samples = array.array("h")
+    samples.frombytes(frames[:usable])
+    peak = max((abs(value) for value in samples), default=0)
+    if peak == 0:
+        return wav
+    gain = min(max_gain, target * 32768 / peak)
+    if gain <= 1.05:
+        return wav
+    scaled = array.array("h", (max(-32768, min(32767, int(value * gain))) for value in samples))
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as handle:
+        handle.setparams(params)
+        handle.writeframes(scaled.tobytes())
+    return buffer.getvalue()
+
+
+def wav_peak(wav: bytes) -> float:
+    """Пиковая амплитуда записи 0..1 (0 — цифровая тишина)."""
+    try:
+        with wave.open(io.BytesIO(wav), "rb") as handle:
+            frames = handle.readframes(handle.getnframes())
+    except (wave.Error, EOFError):
+        return 0.0
+    usable = len(frames) - (len(frames) % 2)
+    if usable <= 0:
+        return 0.0
+    samples = array.array("h")
+    samples.frombytes(frames[:usable])
+    return max((abs(value) for value in samples), default=0) / 32768.0
 
 
 def looks_like_wav(data: bytes) -> bool:

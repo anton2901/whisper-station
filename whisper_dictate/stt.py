@@ -20,6 +20,27 @@ log = logging.getLogger(__name__)
 
 ENDPOINT = "/v1/audio/transcriptions"
 
+# Whisper любит «додумывать» тишину и фоновую музыку целыми фразами.
+# Применяем только к коротким тихим записям, чтобы не съесть настоящую речь.
+HALLUCINATION_MARKERS = (
+    "продолжение следует",
+    "субтитры создавал",
+    "субтитры создавала",
+    "субтитры делал",
+    "редактор субтитров",
+    "корректор",
+    "динамичная музыка",
+    "спасибо за просмотр",
+    "спасибо за внимание",
+    "подписывайтесь на канал",
+    "ставьте лайки",
+    "dimatorzok",
+    "amara.org",
+    "thanks for watching",
+    "please subscribe",
+    "subtitles by",
+)
+
 
 class SttError(RuntimeError):
     """Распознавание не удалось; текст исключения показывается пользователю."""
@@ -58,6 +79,14 @@ def build_multipart(
         out += payload + b"\r\n"
     out += f"--{boundary}--\r\n".encode()
     return bytes(out)
+
+
+def is_probable_hallucination(text: str) -> bool:
+    """Похоже ли на «придуманную» Whisper фразу про субтитры/музыку."""
+    normalized = " ".join(text.strip().lower().split())
+    if not normalized or len(normalized) > 120:
+        return False
+    return any(marker in normalized for marker in HALLUCINATION_MARKERS)
 
 
 def _post(url: str, body: bytes, content_type: str, timeout: float) -> bytes:

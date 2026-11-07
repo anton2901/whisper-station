@@ -14,9 +14,11 @@ from whisper_dictate.config import Config
 from whisper_dictate.recorder import (
     Recorder,
     RecorderError,
+    normalize_pcm,
     pcm_bands,
     pcm_to_wav,
     wav_duration,
+    wav_peak,
 )
 
 FAKE_RECORDER = """#!/bin/sh
@@ -58,6 +60,20 @@ class WavHelpersTest(unittest.TestCase):
 
     def test_pcm_bands_empty(self) -> None:
         self.assertEqual(pcm_bands(b""), [])
+
+    def test_normalize_boosts_quiet_audio(self) -> None:
+        quiet = pcm_to_wav((300).to_bytes(2, "little", signed=True) * 1600)
+        louder = normalize_pcm(quiet)
+        self.assertGreater(wav_peak(louder), wav_peak(quiet) * 3)
+        self.assertLessEqual(wav_peak(louder), 1.0)
+
+    def test_normalize_keeps_loud_audio(self) -> None:
+        loud = pcm_to_wav((30000).to_bytes(2, "little", signed=True) * 1600)
+        self.assertEqual(normalize_pcm(loud), loud)
+
+    def test_normalize_silence_is_noop(self) -> None:
+        silent = pcm_to_wav(b"\x00\x00" * 1600)
+        self.assertEqual(normalize_pcm(silent), silent)
 
 
 class RecorderProcessTest(unittest.TestCase):

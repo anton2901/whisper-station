@@ -9,13 +9,18 @@ from PySide6.QtCore import QObject, Qt, QTimer, Signal
 
 from .config import Config
 from .inject import inject_text
-from .recorder import Recorder, RecorderError, wav_duration
+from .recorder import Recorder, RecorderError, normalize_pcm, wav_duration, wav_peak
 from .service import ServerManager, ServerStatus
-from .stt import SttError, transcribe
+from .stt import SttError, is_probable_hallucination, transcribe
 
 log = logging.getLogger(__name__)
 
 IDLE = "idle"
+
+# Пик ниже — цифровая тишина (шум комнаты на этой машине ~0.004).
+SILENCE_PEAK = 0.008
+# Пик ниже этого — запись тихая: подозрительные фразы отбрасываем.
+WEAK_PEAK = 0.05
 STARTING = "starting"
 RECORDING = "recording"
 TRANSCRIBING = "transcribing"
@@ -42,6 +47,7 @@ class Controller(QObject):
         self._hud = None
         self._recorder: Recorder | None = None
         self._generation = 0
+        self._last_peak = 1.0
         self._max_timer = QTimer(self)
         self._max_timer.setSingleShot(True)
         self._max_timer.timeout.connect(self.stop)
@@ -98,6 +104,24 @@ class Controller(QObject):
             self._set_state(IDLE)
             log.info("controller: запись %.2f с, слишком коротко — пропускаю", duration)
             return
+        peak = wav_peak(wav)
+        self._last_peak = peak
+        if peak < SILENCE_PEAK:
+            if self._hud is not None:
+                self._hud.finish()
+            self._set_state(IDLE)
+            log.info(
+                "controller: тишина (пик %.4f, %.2f с) — распознавание не запускаю",
+                peak,
+                duration,
+            )
+            if duration >= 1.0:
+                self.notify_requested.emit(
+                    "Ничего не слышно",
+                    "Микрофон молчит — проверьте, не выключен ли он",
+                    "low",
+                )
+            return
         if duration < self.cfg.min_seconds:
             if self._hud is not None:
                 self._hud.finish()
@@ -108,6 +132,7 @@ class Controller(QObject):
                 "low",
             )
             return
+        wav = normalize_pcm(wav)
         self._beep()
         generation = self._generation
         threading.Thread(
@@ -182,6 +207,9 @@ class Controller(QObject):
             return
         if self._hud is not None:
             self._hud.finish()
+        if text.strip() and is_probable_hallucination(text) and self._last_peak < WEAK_PEAK:
+            log.info("controller: отбросил галлюцинацию Whisper: %r", text[:80])
+            text = ""
         if not text.strip():
             self._set_state(IDLE)
             self.notify_requested.emit(
