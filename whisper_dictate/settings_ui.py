@@ -23,9 +23,13 @@ from PySide6.QtWidgets import (
 )
 
 from . import APP_TITLE, __version__
-from .config import AUDIO_BACKENDS, INSERT_MODES, LANGUAGES, Config
+from .config import AUDIO_BACKENDS, INSERT_MODES, LANGUAGES, PASTE_SHORTCUTS, Config
 from .service import ServerManager, health
 
+PASTE_LABELS = {
+    "ctrl+v": "Ctrl+V — обычные окна",
+    "ctrl+shift+v": "Ctrl+Shift+V — терминалы",
+}
 MODE_LABELS = {
     "paste": "Буфер + Ctrl+V (рекомендуется)",
     "type": "Посимвольный ввод (ydotool type)",
@@ -60,6 +64,10 @@ class SettingsDialog(QDialog):
         self._server_autostart = QCheckBox("Запускать сервер самому, если он не отвечает", self)
         self._server_autostart.setChecked(cfg.server_autostart)
 
+        self._paste_shortcut = QComboBox(self)
+        for value in PASTE_SHORTCUTS:
+            self._paste_shortcut.addItem(PASTE_LABELS.get(value, value), value)
+        self._paste_shortcut.setCurrentIndex(max(0, self._paste_shortcut.findData(cfg.paste_shortcut)))
         self._mode = QComboBox(self)
         for value in INSERT_MODES:
             self._mode.addItem(MODE_LABELS.get(value, value), value)
@@ -146,6 +154,7 @@ class SettingsDialog(QDialog):
         box = QGroupBox("Вставка текста", self)
         form = QFormLayout(box)
         form.addRow("Способ:", self._mode)
+        form.addRow("Сочетание вставки:", self._paste_shortcut)
         form.addRow(self._restore_clipboard)
         form.addRow("Задержка восстановления буфера:", self._restore_delay)
         hint = QLabel(
@@ -205,6 +214,7 @@ class SettingsDialog(QDialog):
             insert_mode=str(self._mode.currentData()),
             restore_clipboard=self._restore_clipboard.isChecked(),
             restore_delay_ms=int(self._restore_delay.value()),
+            paste_shortcut=str(self._paste_shortcut.currentData()),
             audio_backend=str(self._backend.currentData()),
             audio_device=self._device.text().strip() or "@DEFAULT_SOURCE@",
             min_seconds=float(self._min_seconds.value()),

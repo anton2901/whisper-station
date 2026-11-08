@@ -85,6 +85,15 @@ class ConfigDefaultsTest(unittest.TestCase):
         self.assertIn("# глобальный хоткей", text)
         self.assertIn('toggle = "Meta+Alt+D"', text)
 
+    def test_paste_shortcut_default_and_validation(self) -> None:
+        self.assertEqual(cfgmod.Config().paste_shortcut, "ctrl+v")
+        self.assertFalse(cfgmod.Config().restore_clipboard)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text('[insert]\npaste_shortcut = "cmd+v"\n', encoding="utf-8")
+            cfg = cfgmod.load(path)
+        self.assertEqual(cfg.paste_shortcut, "ctrl+v")
+
     def test_loopback_only(self) -> None:
         self.assertTrue(cfgmod.is_loopback_url("http://127.0.0.1:8765"))
         self.assertTrue(cfgmod.is_loopback_url("http://localhost:8765"))

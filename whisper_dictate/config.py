@@ -19,6 +19,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_HOTKEY = "Meta+Alt+D"
 INSERT_MODES = ("paste", "type", "clipboard")
+PASTE_SHORTCUTS = ("ctrl+v", "ctrl+shift+v")
 AUDIO_BACKENDS = ("auto", "parec", "pw-record")
 LANGUAGES = ("ru", "en", "auto")
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
@@ -36,6 +37,7 @@ SECTIONS: dict[str, dict[str, str]] = {
         "mode": "insert_mode",
         "restore_clipboard": "restore_clipboard",
         "restore_delay_ms": "restore_delay_ms",
+        "paste_shortcut": "paste_shortcut",
     },
     "audio": {
         "backend": "audio_backend",
@@ -66,6 +68,7 @@ COMMENTS = {
         "mode": "paste (буфер + Ctrl+V), type (посимвольно) или clipboard",
         "restore_clipboard": "вернуть прежнее содержимое буфера после вставки",
         "restore_delay_ms": "задержка перед восстановлением буфера, мс (Wayland отдаёт данные асинхронно)",
+        "paste_shortcut": "ctrl+v для обычных окон, ctrl+shift+v для терминалов",
     },
     "audio": {
         "backend": "auto, parec или pw-record",
@@ -93,8 +96,9 @@ class Config:
     server_command: str = ""
     server_autostart: bool = True
     insert_mode: str = "paste"
-    restore_clipboard: bool = True
+    restore_clipboard: bool = False
     restore_delay_ms: int = 1500
+    paste_shortcut: str = "ctrl+v"
     audio_backend: str = "auto"
     audio_device: str = "@DEFAULT_SOURCE@"
     min_seconds: float = 0.35
@@ -144,6 +148,9 @@ def _coerce(value: Any, default: Any, key: str) -> Any:
 def _validate(cfg: Config) -> Config:
     changes: dict[str, Any] = {}
 
+    if cfg.paste_shortcut not in PASTE_SHORTCUTS:
+        log.warning("config: неизвестное сочетание вставки %r, беру ctrl+v", cfg.paste_shortcut)
+        changes["paste_shortcut"] = "ctrl+v"
     if cfg.insert_mode not in INSERT_MODES:
         log.warning("config: неизвестный режим вставки %r, беру paste", cfg.insert_mode)
         changes["insert_mode"] = "paste"

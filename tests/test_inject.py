@@ -65,7 +65,9 @@ class InjectTest(unittest.TestCase):
 
     def test_paste_mode_pastes_and_restores(self) -> None:
         self.clip.write_text("старое", encoding="utf-8")
-        result = inject.inject_text("новый текст", self.cfg(insert_mode="paste"))
+        result = inject.inject_text(
+            "новый текст", self.cfg(insert_mode="paste", restore_clipboard=True)
+        )
         self.assertTrue(result.ok)
         self.assertEqual(result.method, "paste")
         self.assertIn("key 29:1 47:1 47:0 29:0", self.ydotool_calls())
@@ -84,6 +86,13 @@ class InjectTest(unittest.TestCase):
             "новый", self.cfg(insert_mode="paste", restore_clipboard=False)
         )
         self.assertEqual(self.clip.read_text(encoding="utf-8"), "новый")
+
+    def test_terminal_shortcut(self) -> None:
+        result = inject.inject_text(
+            "в терминал", self.cfg(insert_mode="paste", paste_shortcut="ctrl+shift+v")
+        )
+        self.assertTrue(result.ok)
+        self.assertIn("key 29:1 42:1 47:1 47:0 42:0 29:0", self.ydotool_calls())
 
     def test_type_mode(self) -> None:
         result = inject.inject_text(

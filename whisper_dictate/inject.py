@@ -23,8 +23,12 @@ from .paths import runtime_dir, ydotoold_socket
 
 log = logging.getLogger(__name__)
 
-# KEY_LEFTCTRL=29, KEY_V=47 в кодах Linux input-event-codes.
-CTRL_V_SEQUENCE = ("29:1", "47:1", "47:0", "29:0")
+# Коды Linux input-event-codes: LEFTCTRL=29, LEFTSHIFT=42, V=47.
+# В терминалах вставка — Ctrl+Shift+V, в остальных окнах — Ctrl+V.
+PASTE_SEQUENCES = {
+    "ctrl+v": ("29:1", "47:1", "47:0", "29:0"),
+    "ctrl+shift+v": ("29:1", "42:1", "47:1", "47:0", "42:0", "29:0"),
+}
 SOCKET_CANDIDATES = (Path("/tmp/.ydotool_socket"),)
 
 # Собственный ydotoold: останавливаем его при выходе приложения.
@@ -283,8 +287,9 @@ def _ydotool(socket_path: Path, args: list[str], timeout: float = 15.0) -> None:
         raise InjectError(f"ydotool {args[0]} вернул {result.returncode}: {message}")
 
 
-def paste_shortcut(socket_path: Path) -> None:
-    _ydotool(socket_path, ["key", *CTRL_V_SEQUENCE])
+def paste_shortcut(socket_path: Path, sequence: str = "ctrl+v") -> None:
+    keys = PASTE_SEQUENCES.get(sequence, PASTE_SEQUENCES["ctrl+v"])
+    _ydotool(socket_path, ["key", *keys])
 
 
 def type_text(socket_path: Path, text: str, delay_ms: int = 12) -> None:
@@ -325,7 +330,7 @@ def inject_text(text: str, cfg: Config) -> InjectionResult:
 
     try:
         socket_path = ensure_ydotoold()
-        paste_shortcut(socket_path)
+        paste_shortcut(socket_path, cfg.paste_shortcut)
     except InjectError as exc:
         log.warning("inject: Ctrl+V не удался: %s", exc)
         return InjectionResult(
