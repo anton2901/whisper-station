@@ -22,6 +22,7 @@
 - [x] Установка пакетом в `/usr/lib/whisper-dictate` и автозапуск при входе
 - [x] Схема архитектуры (Archify, showcase) в `.archify/` с проверенными гейтами
 - [x] Вставка в терминалы: настраиваемое сочетание Ctrl+V / Ctrl+Shift+V, безопасный буфер
+- [x] Падение при сохранении настроек (SIGSEGV в libdbus) — исправлено
 - [ ] Звуковые сигналы через `libcanberra` вместо `QApplication.beep()`
 - [ ] Команда `whisper-dictate model download` с явным подтверждением
 - [ ] `systemd --user` юнит как альтернатива autostart

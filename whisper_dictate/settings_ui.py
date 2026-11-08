@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import APP_TITLE, __version__
+from . import autostart as autostart_mod
 from .config import AUDIO_BACKENDS, INSERT_MODES, LANGUAGES, PASTE_SHORTCUTS, Config
 from .service import ServerManager, health
 
@@ -103,7 +104,10 @@ class SettingsDialog(QDialog):
         self._hud_pin_top = QCheckBox("Держать HUD сверху по центру (правило KWin)", self)
         self._hud_pin_top.setChecked(cfg.hud_pin_top)
         self._autostart = QCheckBox("Запускать при входе в сессию", self)
-        self._autostart.setChecked(cfg.autostart)
+        # Состояние берём из файла автозапуска, а не из config.toml: его можно
+        # включить командой `whisper-dictate autostart on`, и тогда сохранение
+        # настроек не должно молча выключать автозапуск.
+        self._autostart.setChecked(autostart_mod.is_enabled())
 
         self._status = QLabel("", self)
         self._status.setWordWrap(True)

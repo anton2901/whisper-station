@@ -1,8 +1,14 @@
 """Глобальный хоткей через org.kde.kglobalaccel (KDE Plasma 6, Wayland).
 
 Почему dbus-python, а не QtDBus: PySide6 не умеет маршаллить `ai`/`a(ai)`,
-а именно такие подписи у setShortcutKeys. Вся работа с шиной идёт в отдельном
-потоке, наружу — только колбэк активации.
+а именно такие подписи у setShortcutKeys.
+
+Важно про соединение: раньше здесь был отдельный поток с GLib-циклом и приватный
+bus, который закрывался при перерегистрации хоткея. Закрытое соединение оставляло
+в общем GLib-контексте свои источники, и следующий проход цикла событий Qt падал
+в libdbus (`_dbus_hash_table_lookup_int`, SIGSEGV — снято coredump'ом). Поэтому
+соединение живёт весь процесс, GLib-события обрабатывает основной цикл Qt, а смена
+комбинации — это повторный `setShortcutKeys`, без пересоздания соединения.
 """
 
 from __future__ import annotations
@@ -85,8 +91,7 @@ def _first_key(shortcut_keys: object) -> int | None:
     try:
         for entry in shortcut_keys:  # type: ignore[union-attr]
             for inner in entry:
-                sequence = list(inner)
-                for value in sequence:
+                for value in inner:
                     if int(value) > 0:
                         return int(value)
     except (TypeError, ValueError):
@@ -95,11 +100,12 @@ def _first_key(shortcut_keys: object) -> int | None:
 
 
 class GlobalHotkey:
-    """Регистрация хоткея и ожидание активации в фоновом потоке."""
+    """Регистрация хоткея в KGlobalAccel. Работает в главном потоке Qt."""
 
     def __init__(
         self,
         on_activate: Callable[[], None],
+        on_release: Callable[[], None] | None = None,
         *,
         component: str = APP_NAME,
         friendly: str = APP_TITLE,
@@ -108,142 +114,121 @@ class GlobalHotkey:
     ) -> None:
         self.action_id = ActionId(component, action, friendly, action_text)
         self._on_activate = on_activate
-        self._thread: threading.Thread | None = None
-        self._loop: object | None = None
-        self._ready = threading.Event()
-        self._error: HotkeyError | None = None
+        self._on_release = on_release
+        self._bus = None
+        self._daemon = None
+        self._dbus = None
+        self._stopped = True
         self._effective: str | None = None
         self._last_fire = 0.0
+        self._lock = threading.Lock()
 
     # --- публичное API --------------------------------------------------
     @property
     def active(self) -> bool:
-        return bool(self._thread and self._thread.is_alive())
+        return self._bus is not None and not self._stopped
+
+    @property
+    def effective(self) -> str | None:
+        return self._effective
 
     def start(self, sequence: str, *, force: bool = False, timeout: float = 8.0) -> str:
-        """Зарегистрировать хоткей. Возвращает фактическую комбинацию.
+        """Зарегистрировать комбинацию. Повторный вызов меняет её на лету.
 
-        force=False — уважаем значение, сохранённое в kglobalshortcutsrc
-        (пользователь мог поменять его в System Settings).
-        force=True — применить нашу комбинацию (кнопка «Применить» в настройках).
+        force=False — уважаем значение из kglobalshortcutsrc (пользователь мог
+        поменять его в System Settings). force=True — применяем нашу комбинацию
+        (кнопка «Сохранить» в настройках).
         """
-        self.stop()
-        self._ready.clear()
-        self._error = None
-        self._effective = None
-        self._thread = threading.Thread(
-            target=self._run, args=(sequence, force), name="whisper-hotkey", daemon=True
-        )
-        self._thread.start()
-        if not self._ready.wait(timeout):
-            self._error = HotkeyError("kglobalaccel не ответил за %.0f с" % timeout)
-            raise self._error
-        if self._error is not None:
-            raise self._error
-        return self._effective or sequence
+        del timeout  # вызов синхронный, параметр оставлен для совместимости
+        with self._lock:
+            self._ensure_bus()
+            self._stopped = False
+            return self._apply(sequence, force)
+
+    def apply_sequence(self, sequence: str, *, force: bool = True) -> str:
+        """Сменить комбинацию, не пересоздавая соединение."""
+        return self.start(sequence, force=force)
 
     def stop(self) -> None:
-        thread = self._thread
-        if thread is None:
+        """Перестать реагировать на активацию.
+
+        Соединение намеренно не закрывается: его GLib-источники остаются в общем
+        контексте, и закрытие уже приводило к падению в libdbus при следующем
+        проходе цикла событий Qt.
+        """
+        self._stopped = True
+
+    # --- внутреннее -----------------------------------------------------
+    def _ensure_bus(self) -> None:
+        if self._bus is not None:
             return
-        loop = self._loop
-        try:
-            if loop is not None:
-                from gi.repository import GLib
+        import dbus
+        from dbus.mainloop.glib import DBusGMainLoop
 
-                GLib.idle_add(loop.quit)  # type: ignore[attr-defined]
-        except Exception:  # noqa: BLE001 - выключение не должно падать
-            log.debug("hotkey: не смог остановить GLib-цикл", exc_info=True)
-        thread.join(timeout=3.0)
-        self._thread = None
-        self._loop = None
-
-    # --- поток ----------------------------------------------------------
-    def _run(self, sequence: str, force: bool) -> None:
-        try:
-            import dbus
-            from dbus.mainloop.glib import DBusGMainLoop
-            from gi.repository import GLib
-        except Exception as exc:  # noqa: BLE001 - сообщаем наверх
-            self._error = HotkeyError(f"Нет python-dbus/PyGObject: {exc}")
-            self._ready.set()
-            return
-
+        # Один раз на процесс: дальше GLib-источники обрабатывает цикл событий Qt.
         DBusGMainLoop(set_as_default=True)
-        daemon = None
-        bus = None
+        self._dbus = dbus
+        self._bus = dbus.SessionBus(private=True)
+        self._daemon = dbus.Interface(self._bus.get_object(SERVICE, OBJECT_PATH), INTERFACE)
+        for signal_name in ("globalShortcutPressed", "pressed"):
+            self._bus.add_signal_receiver(
+                self._on_signal_pressed,
+                signal_name=signal_name,
+                dbus_interface=COMPONENT_INTERFACE,
+                bus_name=SERVICE,
+            )
+        self._bus.add_signal_receiver(
+            self._on_signal_released,
+            signal_name="globalShortcutReleased",
+            dbus_interface=COMPONENT_INTERFACE,
+            bus_name=SERVICE,
+        )
+
+    def _apply(self, sequence: str, force: bool) -> str:
+        dbus = self._dbus
+        key = shortcut_to_int(sequence)
+        action_list = dbus.Array(self.action_id.as_list(), signature="s")
+        keys = dbus.Array(
+            [dbus.Struct([dbus.Array([key], signature="i")], signature="ai")],
+            signature="(ai)",
+        )
+        flags = SET_PRESENT | IS_DEFAULT | (NO_AUTOLOADING if force else 0)
         try:
-            bus = dbus.SessionBus(private=True)
-            loop = GLib.MainLoop()
-            self._loop = loop
+            self._daemon.doRegister(action_list)
+            self._daemon.setShortcutKeys(action_list, keys, dbus.UInt32(flags))
+            granted = self._daemon.shortcutKeys(action_list)
+        except Exception as exc:  # noqa: BLE001 - шина может ответить чем угодно
+            raise HotkeyError(f"Не удалось зарегистрировать хоткей: {exc}") from exc
 
-            bus.add_signal_receiver(
-                self._on_signal_pressed,
-                signal_name="globalShortcutPressed",
-                dbus_interface=COMPONENT_INTERFACE,
-                bus_name=SERVICE,
+        effective = _first_key(granted)
+        if effective is None:
+            raise HotkeyError(
+                f"Комбинация {sequence} занята другим приложением — назначьте другую"
             )
-            bus.add_signal_receiver(
-                self._on_signal_pressed,
-                signal_name="pressed",
-                dbus_interface=COMPONENT_INTERFACE,
-                bus_name=SERVICE,
+        if int(effective) != key:
+            log.warning(
+                "hotkey: kglobalaccel вернул %s вместо %s",
+                int_to_shortcut(effective),
+                sequence,
             )
+        self._effective = int_to_shortcut(effective)
+        log.info("hotkey: зарегистрирован %s", self._effective)
+        return self._effective
 
-            key = shortcut_to_int(sequence)
-            action_list = dbus.Array(self.action_id.as_list(), signature="s")
-            keys = dbus.Array(
-                [dbus.Struct([dbus.Array([key], signature="i")], signature="ai")],
-                signature="(ai)",
-            )
-            flags = SET_PRESENT | IS_DEFAULT | (NO_AUTOLOADING if force else 0)
-
-            daemon = dbus.Interface(bus.get_object(SERVICE, OBJECT_PATH), INTERFACE)
-            daemon.doRegister(action_list)
-            daemon.setShortcutKeys(action_list, keys, dbus.UInt32(flags))
-            granted = daemon.shortcutKeys(action_list)
-            effective = _first_key(granted)
-            if effective is None:
-                self._error = HotkeyError(
-                    f"Комбинация {sequence} занята другим приложением — назначьте другую"
-                )
-                self._ready.set()
-                return
-            if int(effective) != key:
-                log.warning(
-                    "hotkey: kglobalaccel вернул %s вместо %s",
-                    int_to_shortcut(effective),
-                    sequence,
-                )
-            self._effective = int_to_shortcut(effective)
-            log.info("hotkey: зарегистрирован %s", self._effective)
-            self._ready.set()
-            loop.run()
-        except Exception as exc:  # noqa: BLE001 - любая ошибка шины = нет хоткея
-            if not self._ready.is_set():
-                self._error = HotkeyError(f"Не удалось зарегистрировать хоткей: {exc}")
-                self._ready.set()
-            else:
-                log.warning("hotkey: поток завершился с ошибкой: %s", exc)
-        finally:
-            # Компонент намеренно не снимаем с регистрации: при перезапуске
-            # старый процесс успевает удалить запись нового, и хоткей «умирает».
-            # Запись в kglobalshortcutsrc остаётся, как у обычных KDE-приложений.
-            if bus is not None:
-                try:
-                    bus.close()
-                except Exception:  # noqa: BLE001
-                    pass
+    def _match(self, args: tuple[object, ...]) -> bool:
+        """Отфильтровать сигнал по компоненту и действию."""
+        if len(args) >= 2:
+            component = args[0] if len(args) > 2 else None
+            action = args[1] if len(args) > 2 else args[0]
+            if component is not None and str(component) != self.action_id.component:
+                return False
+            return str(action) == self.action_id.action
+        return True
 
     def _on_signal_pressed(self, *args: object) -> None:
         """Сигналы: globalShortcutPressed(component, action, ts) или pressed(actionId, opts)."""
-        if len(args) >= 2:
-            action = args[1] if len(args) > 2 else args[0]
-            component = args[0] if len(args) > 2 else None
-            if component is not None and str(component) != self.action_id.component:
-                return
-            if str(action) != self.action_id.action:
-                return
+        if not self._match(args) or self._stopped:
+            return
         now = time.monotonic()
         if now - self._last_fire < DEBOUNCE_SECONDS:
             return
@@ -251,5 +236,15 @@ class GlobalHotkey:
         log.debug("hotkey: активация")
         try:
             self._on_activate()
-        except Exception:  # noqa: BLE001 - колбэк не должен убивать поток шины
+        except Exception:  # noqa: BLE001 - колбэк не должен ломать шину
             log.exception("hotkey: колбэк активации упал")
+
+    def _on_signal_released(self, *args: object) -> None:
+        """globalShortcutReleased(component, action, ts) — для push-to-talk."""
+        if not self._match(args) or self._stopped or self._on_release is None:
+            return
+        self._last_fire = 0.0
+        try:
+            self._on_release()
+        except Exception:  # noqa: BLE001
+            log.exception("hotkey: колбэк отпускания упал")
