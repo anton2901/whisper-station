@@ -23,10 +23,19 @@
 - [x] Схема архитектуры (Archify, showcase) в `.archify/` с проверенными гейтами
 - [x] Вставка в терминалы: настраиваемое сочетание Ctrl+V / Ctrl+Shift+V, безопасный буфер
 - [x] Падение при сохранении настроек (SIGSEGV в libdbus) — исправлено
-- [ ] Звуковые сигналы через `libcanberra` вместо `QApplication.beep()`
-- [ ] Команда `whisper-dictate model download` с явным подтверждением
-- [ ] `systemd --user` юнит как альтернатива autostart
-- [ ] Лицензия и публикация в AUR
+- [x] Звуковые сигналы через `libcanberra` вместо `QApplication.beep()`
+- [x] Команда `whisper-dictate model download` с явным подтверждением
+- [x] `systemd --user` юнит как альтернатива autostart
+- [x] Ретрай записи и пункт трея «Вставить последний текст»
+- [x] Лицензия GPL-3.0
+- [ ] Публикация в AUR (нужны GitHub-remote и аккаунт AUR)
+
+## Далёкое будущее (после доработки под Linux)
+
+- Переносимость: пакеты для Debian/Fedora, Flatpak, X11 (`xclip`/`xdotool`)
+- Портал `GlobalShortcuts` для GNOME/Hyprland
+- Распространение сервера распознавания (venv/Docker) вместе с моделью
+- Матрица тестов на KDE/GNOME/Hyprland
 
 ## Известные ограничения
 

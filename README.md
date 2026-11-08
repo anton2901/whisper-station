@@ -79,8 +79,13 @@ whisper-dictate autostart on       # автозапуск при входе
 
 ## Команды
 
-`toggle`, `start`, `stop`, `cancel`, `settings`, `status`, `transcribe FILE`,
-`doctor`, `config`, `log`, `autostart on|off`, `service status|start`, `quit`, `daemon`.
+`toggle`, `start`, `stop`, `cancel`, `repaste`, `settings`, `status`, `transcribe FILE`,
+`doctor`, `config`, `log`, `autostart on|off`, `model status|download`, `systemd install|enable|disable|status`,
+`service status|start`, `quit`, `daemon`.
+
+- `repaste` и пункт трея «Вставить последний текст» — повторная вставка последней диктовки.
+- `model status|download` — наличие модели и загрузка из HuggingFace (по `--yes`).
+- `systemd enable` — запуск через user-юнит с автоперезапуском; autostart при этом отключается.
 
 ## Ограничения Wayland (честно)
 
@@ -105,6 +110,8 @@ whisper-dictate autostart on       # автозапуск при входе
 sudo pacman -R whisper-dictate
 rm -rf ~/.config/whisper-dictate ~/.local/state/whisper-dictate
 ```
+
+Лицензия: **GNU GPL v3** (`LICENSE`).
 
 Архитектура и решения — `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, проверки — `docs/VERIFICATION.md`.
 

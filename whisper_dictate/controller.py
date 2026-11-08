@@ -7,6 +7,7 @@ import threading
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 
+from . import sounds
 from .config import Config
 from .inject import inject_text
 from .recorder import Recorder, RecorderError, normalize_pcm, wav_duration, wav_peak
@@ -50,6 +51,8 @@ class Controller(QObject):
         self._recorder: Recorder | None = None
         self._generation = 0
         self._last_peak = 1.0
+        self._last_text = ""
+        self._restarts = 0
         self._max_timer = QTimer(self)
         self._max_timer.setSingleShot(True)
         self._max_timer.timeout.connect(self.stop)
@@ -154,7 +157,8 @@ class Controller(QObject):
             )
             return
         wav = normalize_pcm(wav)
-        self._beep()
+        if self.cfg.beep:
+            sounds.play("stop")
         generation = self._generation
         threading.Thread(
             target=self._run_transcription,
@@ -218,10 +222,48 @@ class Controller(QObject):
         self._recorder = recorder
         self._max_timer.start(int(self.cfg.max_seconds * 1000))
         self._set_state(RECORDING)
-        self._beep()
+        self._restarts = 0
+        if self.cfg.beep:
+            sounds.play("start")
+        QTimer.singleShot(400, self._check_recorder_started)
         if self._hud is not None and self.cfg.show_hud:
             self._hud.begin_recording()
         log.info("controller: запись началась")
+
+    def _check_recorder_started(self) -> None:
+        """Если запись не стартовала (процесс умер сразу) — один перезапуск."""
+        if self.state != RECORDING or self._recorder is None:
+            return
+        if self._recorder.running or self._recorder.bytes_captured > 0:
+            return
+        if self._restarts >= 1:
+            log.warning("controller: запись не идёт даже после перезапуска")
+            return
+        self._restarts += 1
+        log.warning("controller: запись не стартовала, перезапускаю микрофон")
+        try:
+            recorder = Recorder(self.cfg, on_wave=self.wave_changed.emit)
+            recorder.start()
+        except RecorderError as exc:
+            self._on_error(str(exc))
+            return
+        self._recorder = recorder
+        QTimer.singleShot(400, self._check_recorder_started)
+
+    def repaste(self) -> None:
+        """Повторно вставить последний распознанный текст в активное окно."""
+        if not self._last_text:
+            self.notify_requested.emit(
+                "Нечего вставлять", "Ещё не было ни одной диктовки", "low"
+            )
+            return
+        result = inject_text(self._last_text, self.cfg)
+        if result.ok:
+            self.notify_requested.emit(
+                "Вставлено", "Последний текст отправлен в активное окно", "low"
+            )
+        else:
+            self.notify_requested.emit("Текст в буфере обмена", result.detail, "normal")
 
     def _on_transcribed(self, text: str, elapsed_ms: int) -> None:
         if self.state != TRANSCRIBING:
@@ -240,6 +282,7 @@ class Controller(QObject):
             )
             return
         log.info("controller: распознано за %d мс", elapsed_ms)
+        self._last_text = text
         result = inject_text(text, self.cfg)
         self._set_state(IDLE)
         if result.ok:
@@ -261,12 +304,3 @@ class Controller(QObject):
         self.state = state
         self.state_changed.emit(state)
 
-    def _beep(self) -> None:
-        if not self.cfg.beep:
-            return
-        try:
-            from PySide6.QtWidgets import QApplication
-
-            QApplication.beep()
-        except Exception:  # noqa: BLE001 - сигнал не критичен
-            log.debug("controller: beep недоступен", exc_info=True)

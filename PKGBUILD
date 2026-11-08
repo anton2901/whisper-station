@@ -5,8 +5,7 @@ pkgrel=1
 pkgdesc="Локальная диктовка для KDE Plasma 6 / Wayland: хоткей, HUD, вставка текста"
 arch=('any')
 url="https://example.invalid/whisper-dictate"
-# Лицензия проекта ещё не выбрана — см. docs/DECISIONS.md.
-license=('custom')
+license=('GPL-3.0-only')
 depends=(
   'python'
   'pyside6'
@@ -53,4 +52,6 @@ WRAPPER
     "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
   install -Dm644 "$startdir/README.md" \
     "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 "$startdir/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

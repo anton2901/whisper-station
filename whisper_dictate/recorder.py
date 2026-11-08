@@ -85,6 +85,11 @@ class Recorder:
         return self._proc is not None and self._proc.poll() is None
 
     @property
+    def bytes_captured(self) -> int:
+        with self._lock:
+            return len(self._buffer)
+
+    @property
     def elapsed(self) -> float:
         return time.monotonic() - self._started_at if self._started_at else 0.0
 

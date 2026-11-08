@@ -88,6 +88,7 @@ class WhisperDictate(QObject):
         self.record_action = QAction(f"Записать ({self._hotkey_text})", self)
         self.server_action = QAction("Запустить сервер", self)
         self.server_action.setVisible(False)
+        self.repaste_action = QAction("Вставить последний текст", self)
         self.settings_action = QAction("Настройки…", self)
         self.log_action = QAction("Открыть лог", self)
         self.quit_action = QAction("Выход", self)
@@ -95,6 +96,7 @@ class WhisperDictate(QObject):
         self.menu.addAction(self.status_action)
         self.menu.addSeparator()
         self.menu.addAction(self.record_action)
+        self.menu.addAction(self.repaste_action)
         self.menu.addAction(self.server_action)
         self.menu.addSeparator()
         self.menu.addAction(self.settings_action)
@@ -108,6 +110,7 @@ class WhisperDictate(QObject):
 
     def _wire(self) -> None:
         self.record_action.triggered.connect(self.controller.toggle)
+        self.repaste_action.triggered.connect(self.controller.repaste)
         self.server_action.triggered.connect(self.start_server)
         self.settings_action.triggered.connect(self.open_settings)
         self.log_action.triggered.connect(self.open_log)
@@ -160,6 +163,9 @@ class WhisperDictate(QObject):
             return "ok"
         if command == "stop":
             self.controller.stop()
+            return "ok"
+        if command == "repaste":
+            self.controller.repaste()
             return "ok"
         if command == "cancel":
             self.controller.cancel()

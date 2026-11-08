@@ -15,13 +15,22 @@ from . import APP_NAME, APP_TITLE, __version__
 from . import autostart as autostart_mod
 from . import paths
 from . import ipc
-from .config import DEFAULT_HOTKEY, Config, dumps, load
+from .config import DEFAULT_HOTKEY, Config, dumps, load, save
 from .logsetup import configure as configure_logging
 from .recorder import available_backends, looks_like_wav
 from .service import ServerManager, health
 from .stt import SttError, transcribe
 
-DAEMON_COMMANDS = ("toggle", "start", "stop", "cancel", "settings", "quit", "status")
+DAEMON_COMMANDS = (
+    "toggle",
+    "start",
+    "stop",
+    "cancel",
+    "repaste",
+    "settings",
+    "quit",
+    "status",
+)
 START_TIMEOUT = 15.0
 
 
@@ -176,6 +185,77 @@ def cmd_config(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
+def cmd_model(args: argparse.Namespace) -> int:
+    from . import models
+
+    if args.action == "status":
+        info = models.status()
+        print(
+            json.dumps(
+                {
+                    "path": str(info["path"]),
+                    "exists": info["exists"],
+                    "files": info["files"],
+                    "size_mb": round(int(info["size_bytes"]) / 1_048_576, 1),
+                    "python": str(models.python_with_hub() or "нет с huggingface_hub"),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    if not args.yes:
+        print(f"Скачает {models.DEFAULT_REPO} (около 1.6 ГБ) в {models.models_dir()}")
+        print("Повторите с --yes, если это то, что нужно")
+        return 1
+    try:
+        models.download(args.repo or models.DEFAULT_REPO)
+    except models.ModelError as exc:
+        print(f"{APP_NAME}: {exc}", file=sys.stderr)
+        return 1
+    print(f"модель в {models.models_dir()}")
+    return 0
+
+
+def cmd_systemd(args: argparse.Namespace, cfg: Config) -> int:
+    from . import systemd_unit
+
+    if args.action == "status":
+        print(
+            json.dumps(
+                {
+                    "unit": str(systemd_unit.unit_path()),
+                    "enabled": systemd_unit.is_enabled(),
+                    "active": systemd_unit.is_active(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+    if args.action == "install":
+        print(systemd_unit.install())
+        return 0
+    if args.action == "enable":
+        if ipc.status() is not None:
+            # Освобождаем место: дальше демоном управляет systemd.
+            ipc.send("quit")
+            deadline = time.monotonic() + 8
+            while time.monotonic() < deadline and ipc.status() is not None:
+                time.sleep(0.2)
+        if not systemd_unit.enable():
+            print(f"{APP_NAME}: не удалось включить юнит", file=sys.stderr)
+            return 1
+        autostart_mod.disable()
+        save(cfg.with_changes(autostart=False))
+        print(f"юнит включён: {systemd_unit.unit_path()}")
+        print("автозапуск через ~/.config/autostart отключён, чтобы не было двух копий")
+        return 0
+    systemd_unit.disable()
+    print("юнит выключен")
+    return 0
+
+
 def cmd_log(args: argparse.Namespace) -> int:
     path = paths.log_file()
     if args.open:
@@ -229,6 +309,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("start", "начать запись"),
         ("stop", "остановить запись и вставить текст"),
         ("cancel", "отменить запись без вставки"),
+        ("repaste", "вставить последний распознанный текст"),
         ("settings", "открыть настройки"),
         ("quit", "завершить демон"),
     ):
@@ -255,6 +336,16 @@ def build_parser() -> argparse.ArgumentParser:
     autostart_parser = sub.add_parser("autostart", help="автозапуск при входе")
     autostart_parser.add_argument("action", choices=("on", "off", "status"))
     autostart_parser.set_defaults(func=lambda args, _cfg: cmd_autostart(args))
+
+    model_parser = sub.add_parser("model", help="модель Whisper: наличие и скачивание")
+    model_parser.add_argument("action", choices=("status", "download"))
+    model_parser.add_argument("--repo", help="репозиторий HuggingFace")
+    model_parser.add_argument("--yes", action="store_true", help="подтвердить загрузку ~1.6 ГБ")
+    model_parser.set_defaults(func=lambda args, _cfg: cmd_model(args))
+
+    systemd_parser = sub.add_parser("systemd", help="user-юнит systemd вместо autostart")
+    systemd_parser.add_argument("action", choices=("install", "enable", "disable", "status"))
+    systemd_parser.set_defaults(func=cmd_systemd)
 
     service_parser = sub.add_parser("service", help="локальный сервер распознавания")
     service_parser.add_argument("action", choices=("status", "start"))
