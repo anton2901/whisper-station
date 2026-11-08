@@ -42,10 +42,11 @@ class InjectTest(unittest.TestCase):
         self.clip = self.root / "clipboard.txt"
         self.log = self.root / "ydotool.log"
         # Настоящий слушающий UNIX-сокет: ensure_ydotoold проверяет живость.
+        # ydotoold слушает SOCK_DGRAM, поэтому и подставной сокет — DGRAM,
+        # иначе проба живости падает с EPROTOTYPE и тест лезет в /run/user.
         self.socket = self.root / "yd.sock"
-        self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.listener = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         self.listener.bind(str(self.socket))
-        self.listener.listen(1)
         self.addCleanup(self.listener.close)
         env = {
             "PATH": f"{self.root}{os.pathsep}{os.environ.get('PATH', '')}",
@@ -56,6 +57,16 @@ class InjectTest(unittest.TestCase):
         patcher = mock.patch.dict(os.environ, env, clear=False)
         patcher.start()
         self.addCleanup(patcher.stop)
+        # Не даём тестам трогать реальные сокеты и /run/user: только tempdir.
+        patches = [
+            mock.patch.object(inject, "SOCKET_CANDIDATES", ()),
+            mock.patch.object(
+                inject, "ydotoold_socket", lambda: self.root / "own-ydotoold.sock"
+            ),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
 
     def cfg(self, **changes) -> Config:
         return Config(restore_delay_ms=0, **changes)
