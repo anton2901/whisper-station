@@ -118,6 +118,13 @@ sudo pacman -R whisper-station
 rm -rf ~/.config/whisper-station ~/.local/state/whisper-station
 ```
 
+## Бренд
+
+Иконка и палитра — в `brand/`: мастер `brand/app.svg`, экспорты, трей для светлой
+и тёмной панели, контактный лист `brand/board.png` и `brand/style-tile.html`.
+Пересобрать: `python3 brand/make_board.py`. Иконка пакета совпадает с бренд-мастером
+(это проверяет тест).
+
 Лицензия: **GNU GPL v3** (`LICENSE`).
 
 Архитектура и решения — `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, проверки — `docs/VERIFICATION.md`.

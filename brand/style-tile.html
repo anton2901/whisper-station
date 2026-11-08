@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>whisper-station · style tile</title>
+<style>
+  :root {
+    --space-top: #101a2e;
+    --space-bottom: #060a12;
+    --orbit: #5fc4f5;
+    --moon: #bfe9ff;
+    --text: #eaf6ff;
+    --muted: #8fa0b8;
+    --rec: #e05a4f;
+    --busy: #e0b050;
+    --bg: #14141a;
+    --card: #191920;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px;
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 "DejaVu Sans", system-ui, sans-serif;
+  }
+  h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: -0.5px; }
+  h2 { margin: 40px 0 14px; font-size: 15px; text-transform: uppercase;
+       letter-spacing: 2px; color: var(--muted); font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 8px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+  .swatch { width: 150px; }
+  .swatch i { display: block; height: 64px; border-radius: 10px;
+              border: 1px solid rgba(255,255,255,.08); }
+  .swatch b { display: block; margin-top: 8px; font: 12px/1.3 "DejaVu Sans Mono", monospace; }
+  .swatch span { color: var(--muted); font-size: 12px; }
+  .icons { display: flex; gap: 28px; align-items: flex-end; }
+  .icons figure { margin: 0; text-align: center; }
+  .icons figcaption { margin-top: 8px; color: var(--muted);
+                      font: 11px "DejaVu Sans Mono", monospace; }
+  .tray { display: flex; gap: 24px; padding: 18px 22px; border-radius: 12px; align-items: center; }
+  .tray.light { background: #ececf1; }
+  .tray.dark { background: #191920; }
+  .tray img { display: block; }
+  .hud {
+    width: 480px; height: 64px; border-radius: 14px; position: relative;
+    background: linear-gradient(180deg, rgba(16,26,46,.96), rgba(6,10,18,.96));
+    border: 1px solid rgba(95,196,245,.35);
+    font: 13px "DejaVu Sans Mono", monospace; overflow: hidden;
+  }
+  .hud .rec { position: absolute; left: 30px; top: 16px; color: var(--orbit); }
+  .hud .timer { position: absolute; left: 86px; top: 14px; font-size: 20px; color: var(--text); }
+  .hud .label { position: absolute; left: 30px; bottom: 9px; font-size: 9px;
+                letter-spacing: 1.4px; color: var(--muted); }
+  .hud .wave { position: absolute; left: 170px; right: 190px; top: 26px; height: 12px;
+               background: linear-gradient(90deg, #5fc4f5, #9aa0ff 60%, #ff9ff0);
+               -webkit-mask: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 5px);
+               mask: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 5px); }
+  .type { max-width: 720px; }
+  .type .mono { font: 13px "DejaVu Sans Mono", monospace; color: var(--orbit); }
+  code { font: 12px "DejaVu Sans Mono", monospace; color: var(--moon); }
+</style>
+</head>
+<body>
+  <h1>whisper-station</h1>
+  <p class="sub">Локальная диктовка · бренд-пак 0.3.0</p>
+  <p class="sub">Микрофон в орбите: «станция на связи». Тёмный космос, циановая орбита, луна в разрыве.</p>
+
+  <h2>Иконка</h2>
+  <div class="icons">
+    <figure><img src="app-256.png" width="128" height="128" alt=""><figcaption>128</figcaption></figure>
+    <figure><img src="app-256.png" width="64" height="64" alt=""><figcaption>64</figcaption></figure>
+    <figure><img src="app-256.png" width="32" height="32" alt=""><figcaption>32</figcaption></figure>
+  </div>
+
+  <h2>Трей</h2>
+  <div class="grid">
+    <div class="tray light">
+      <img src="tray-light-16.png" alt=""><img src="tray-light-22.png" alt=""><img src="tray-light-32.png" alt="">
+    </div>
+    <div class="tray dark">
+      <img src="tray-dark-16.png" alt=""><img src="tray-dark-22.png" alt=""><img src="tray-dark-32.png" alt="">
+    </div>
+  </div>
+
+  <h2>Палитра</h2>
+  <div class="grid">
+    <div class="swatch"><i style="background:#101a2e"></i><b>#101a2e</b><span>космос, верх</span></div>
+    <div class="swatch"><i style="background:#060a12"></i><b>#060a12</b><span>космос, низ</span></div>
+    <div class="swatch"><i style="background:#5fc4f5"></i><b>#5fc4f5</b><span>орбита</span></div>
+    <div class="swatch"><i style="background:#bfe9ff"></i><b>#bfe9ff</b><span>луна</span></div>
+    <div class="swatch"><i style="background:#eaf6ff"></i><b>#eaf6ff</b><span>текст</span></div>
+    <div class="swatch"><i style="background:#8fa0b8"></i><b>#8fa0b8</b><span>вторичный</span></div>
+    <div class="swatch"><i style="background:#e05a4f"></i><b>#e05a4f</b><span>запись</span></div>
+    <div class="swatch"><i style="background:#e0b050"></i><b>#e0b050</b><span>ожидание</span></div>
+  </div>
+
+  <h2>HUD</h2>
+  <div class="hud">
+    <div class="rec">● REC</div>
+    <div class="timer">0:07</div>
+    <div class="wave"></div>
+    <div class="label">WHISPER STATION</div>
+  </div>
+
+  <h2>Типографика</h2>
+  <div class="type">
+    <p><span class="mono">mono</span> — таймер, состояния, подпись HUD: DejaVu Sans Mono.</p>
+    <p>Основной текст интерфейса — системный шрифт sans-serif, 13–15 px.</p>
+    <p>Команды — <code>whisper-station repaste</code>, <code>systemctl --user status whisper-station</code>.</p>
+  </div>
+</body>
+</html>
