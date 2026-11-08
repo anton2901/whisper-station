@@ -76,7 +76,7 @@ class ConfigDefaultsTest(unittest.TestCase):
             )
             cfg = cfgmod.load(path)
         self.assertEqual(cfg.hotkey, cfgmod.DEFAULT_HOTKEY)
-        self.assertEqual(cfg.max_seconds, 120.0)
+        self.assertEqual(cfg.max_seconds, cfgmod.Config().max_seconds)
         self.assertTrue(cfg.beep)
 
     def test_dumps_has_sections_and_comments(self) -> None:
@@ -96,6 +96,13 @@ class ConfigDefaultsTest(unittest.TestCase):
                 new_file = Path(tmp) / "whisper-station" / "config.toml"
                 self.assertTrue(new_file.is_file())
         self.assertEqual(cfg.hotkey, "Alt+M")
+
+    def test_max_seconds_capped(self) -> None:
+        self.assertEqual(cfgmod.Config().max_seconds, 300.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text("[audio]\nmax_seconds = 5000\n", encoding="utf-8")
+            self.assertEqual(cfgmod.load(path).max_seconds, cfgmod.MAX_RECORD_SECONDS)
 
     def test_preview_live_default_and_parsing(self) -> None:
         self.assertTrue(cfgmod.Config().preview_live)

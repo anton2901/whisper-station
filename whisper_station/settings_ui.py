@@ -24,7 +24,15 @@ from PySide6.QtWidgets import (
 
 from . import APP_TITLE, __version__
 from . import autostart as autostart_mod
-from .config import AUDIO_BACKENDS, HOTKEY_MODES, INSERT_MODES, LANGUAGES, PASTE_SHORTCUTS, Config
+from .config import (
+    AUDIO_BACKENDS,
+    HOTKEY_MODES,
+    INSERT_MODES,
+    LANGUAGES,
+    MAX_RECORD_SECONDS,
+    PASTE_SHORTCUTS,
+    Config,
+)
 from .service import ServerManager, health
 
 HOTKEY_MODE_LABELS = {
@@ -101,7 +109,7 @@ class SettingsDialog(QDialog):
         self._min_seconds.setSuffix(" с")
         self._min_seconds.setValue(cfg.min_seconds)
         self._max_seconds = QSpinBox(self)
-        self._max_seconds.setRange(5, 600)
+        self._max_seconds.setRange(5, int(MAX_RECORD_SECONDS))
         self._max_seconds.setSuffix(" с")
         self._max_seconds.setValue(int(cfg.max_seconds))
 

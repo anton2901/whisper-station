@@ -203,7 +203,10 @@ class Controller(QObject):
 
     def _run_transcription(self, wav: bytes, generation: int) -> None:
         try:
-            result = transcribe(wav, self.cfg)
+            # Длинная запись распознаётся дольше: таймаут растёт вместе с ней.
+            seconds = wav_duration(wav)
+            timeout = max(90.0, seconds * 0.7 + 30.0)
+            result = transcribe(wav, self.cfg, timeout=timeout)
         except SttError as exc:
             self._transcribe_failed.emit(str(exc))
             return

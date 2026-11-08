@@ -18,6 +18,9 @@ from .paths import config_file, legacy_config_file
 log = logging.getLogger(__name__)
 
 DEFAULT_HOTKEY = "Meta+Alt+D"
+# Потолок записи: 30 минут. Сервер принимает до 64 МБ (~34 мин PCM16 16 кГц),
+# а в памяти это ~58 МБ — с запасом.
+MAX_RECORD_SECONDS = 1800.0
 INSERT_MODES = ("paste", "type", "clipboard")
 PASTE_SHORTCUTS = ("ctrl+v", "ctrl+shift+v")
 HOTKEY_MODES = ("toggle", "press")
@@ -110,7 +113,7 @@ class Config:
     audio_backend: str = "auto"
     audio_device: str = "@DEFAULT_SOURCE@"
     min_seconds: float = 0.35
-    max_seconds: float = 120.0
+    max_seconds: float = 300.0
     beep: bool = True
     show_hud: bool = True
     hud_pin_top: bool = True
@@ -185,6 +188,13 @@ def _validate(cfg: Config) -> Config:
         changes["min_seconds"] = 0.35
     if cfg.max_seconds <= cfg.min_seconds:
         changes["max_seconds"] = max(120.0, cfg.min_seconds * 2)
+    if cfg.max_seconds > MAX_RECORD_SECONDS:
+        log.warning(
+            "config: max_seconds=%.0f больше предела, ограничиваю %.0f",
+            cfg.max_seconds,
+            MAX_RECORD_SECONDS,
+        )
+        changes["max_seconds"] = MAX_RECORD_SECONDS
     if cfg.restore_delay_ms < 0:
         changes["restore_delay_ms"] = 0
     return cfg.with_changes(**changes) if changes else cfg
