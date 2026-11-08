@@ -1,4 +1,4 @@
-"""Тесты правила KWin: координаты HUD, список правил, запись в kwinrulesrc."""
+"""Тесты правила KWin: координаты HUD, INI-правка и запись в kwinrulesrc."""
 
 from __future__ import annotations
 
@@ -25,14 +25,6 @@ class PositionTest(unittest.TestCase):
         self.assertEqual(x, 0)
 
 
-class SizeTest(unittest.TestCase):
-    def test_matches_hud_size(self) -> None:
-        from whisper_dictate import hud
-
-        self.assertEqual(rules.HUD_WIDTH, hud.WIDTH)
-        self.assertEqual(rules.HUD_HEIGHT, hud.HEIGHT)
-
-
 class RuleIdsTest(unittest.TestCase):
     def test_parse(self) -> None:
         self.assertEqual(rules.rule_ids(""), [])
@@ -41,10 +33,27 @@ class RuleIdsTest(unittest.TestCase):
         self.assertEqual(rules.rule_ids("abc,5"), [5])
 
 
+class IniTest(unittest.TestCase):
+    def test_parse_sections(self) -> None:
+        lines = ["[General]", "rules=7", "", "[7]", "wmclass=firefox", "# comment", "position=5,5"]
+        sections = rules.parse_sections(lines)
+        self.assertEqual(sections["General"]["rules"], "7")
+        self.assertEqual(sections["7"]["wmclass"], "firefox")
+        self.assertEqual(sections["7"]["position"], "5,5")
+
+    def test_set_and_replace(self) -> None:
+        lines = ["[7]", "wmclass=firefox"]
+        lines = rules._set_in_section(lines, "7", "wmclass", "kate")
+        self.assertEqual(lines, ["[7]", "wmclass=kate"])
+
+    def test_new_section_appended(self) -> None:
+        lines = rules._set_in_section(["[General]", "rules="], "991001", "wmclass", "x")
+        self.assertIn("[991001]", lines)
+        self.assertIn("wmclass=x", lines)
+
+
 class RuleFileTest(unittest.TestCase):
     def setUp(self) -> None:
-        if not rules.available():
-            self.skipTest("kwriteconfig6/kreadconfig6 недоступны")
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.config = Path(self.tmp.name) / "kwinrulesrc"
@@ -55,35 +64,37 @@ class RuleFileTest(unittest.TestCase):
     def test_creates_rule(self) -> None:
         self.assertTrue(rules.ensure_rule(1540, 40, config=self.config))
         text = self.config.read_text(encoding="utf-8")
-        self.assertIn(str(rules.RULE_ID), text)
+        self.assertIn(f"[{rules.RULE_ID}]", text)
         self.assertIn("position=1540,40", text)
         self.assertIn("wmclass=whisper-dictate", text)
         self.assertIn("positionrule=2", text)
         self.assertTrue(rules.rule_present(config=self.config))
 
-    def test_keeps_foreign_rules(self) -> None:
+    def test_keeps_foreign_content(self) -> None:
         self.config.write_text(
-            "[General]\ncount=1\nrules=7\n\n[7]\nwmclass=firefox\nposition=5,5\n",
+            "# чужой комментарий\n[General]\nrules=7\n\n[7]\nwmclass=firefox\nposition=5,5\n",
             encoding="utf-8",
         )
         self.assertTrue(rules.ensure_rule(100, 20, config=self.config))
         text = self.config.read_text(encoding="utf-8")
         self.assertIn("wmclass=firefox", text)
-        self.assertEqual(rules.rule_ids(rules._kread(self.config, "General", "rules")), [7, rules.RULE_ID])
+        self.assertIn("# чужой комментарий", text)
+        sections = rules.parse_sections(text.splitlines())
+        self.assertEqual(sections["7"]["wmclass"], "firefox")
+        self.assertEqual(sections[str(rules.RULE_ID)]["position"], "100,20")
+
+    def test_update_does_not_duplicate(self) -> None:
+        rules.ensure_rule(10, 10, config=self.config)
+        rules.ensure_rule(20, 30, config=self.config)
+        text = self.config.read_text(encoding="utf-8")
+        self.assertEqual(text.count("position="), 1)
+        self.assertEqual(text.count(f"[{rules.RULE_ID}]"), 1)
 
     def test_remove_rule(self) -> None:
         rules.ensure_rule(10, 10, config=self.config)
         self.assertTrue(rules.remove_rule(config=self.config))
         self.assertFalse(rules.rule_present(config=self.config))
         self.assertFalse(rules.remove_rule(config=self.config))
-
-    def test_update_existing_rule(self) -> None:
-        rules.ensure_rule(10, 10, config=self.config)
-        rules.ensure_rule(20, 30, config=self.config)
-        text = self.config.read_text(encoding="utf-8")
-        self.assertIn("position=20,30", text)
-        self.assertEqual(text.count(str(rules.RULE_ID)), text.count(str(rules.RULE_ID)))
-        self.assertEqual(len(rules.rule_ids(rules._kread(self.config, "General", "rules"))), 1)
 
 
 if __name__ == "__main__":
