@@ -6,8 +6,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
+
+# Единственный источник рисунка приложения: тот же SVG, что ставится в меню.
+SVG_CANDIDATES = (
+    Path("/usr/share/icons/hicolor/scalable/apps/whisper-station.svg"),
+    Path(__file__).resolve().parent.parent / "packaging" / "whisper-station.svg",
+)
 
 SIZE = 64
 IDLE_COLOR = "#3f9fd8"
@@ -71,50 +79,45 @@ def tray_icon(state: str) -> QIcon:
     return QIcon(pixmap)
 
 
+def svg_path() -> Path | None:
+    for candidate in SVG_CANDIDATES:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
 def app_icon() -> QIcon:
-    """Иконка приложения: ночное небо, орбита, микрофон."""
+    """Иконка приложения: рендерим тот же SVG, что видит меню приложений."""
+    path = svg_path()
+    if path is not None:
+        try:
+            from PySide6.QtSvg import QSvgRenderer
+
+            size = 256
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            QSvgRenderer(str(path)).render(painter, QRectF(0, 0, size, size))
+            painter.end()
+            return QIcon(pixmap)
+        except Exception:  # noqa: BLE001 - без SVG остаётся запасной рисунок
+            pass
+    return _fallback_app_icon()
+
+
+def _fallback_app_icon() -> QIcon:
     size = 256
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    # Поля по краям: в меню приложений иконку иначе обрезает собственный маска-скругление.
-    painter.translate(size / 2, size / 2)
-    painter.scale(0.84, 0.84)
-    painter.translate(-size / 2, -size / 2)
-
-    gradient = QLinearGradient(0, 0, 0, size)
-    gradient.setColorAt(0.0, QColor("#101a2e"))
-    gradient.setColorAt(1.0, QColor("#060a12"))
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(gradient)
-    painter.drawRoundedRect(QRectF(4, 4, size - 8, size - 8), 56, 56)
-
-    # звёзды
-    stars = ((48, 62, 2.6), (196, 78, 2.0), (74, 190, 1.8), (182, 178, 2.4), (128, 40, 1.6))
-    for x, y, radius in stars:
-        painter.setBrush(QColor(255, 255, 255, 150))
-        painter.drawEllipse(QRectF(x - radius, y - radius, radius * 2, radius * 2))
-
-    center = size / 2
-    ring = QRectF(center - 74, center - 74, 148, 148)
-    painter.setBrush(Qt.BrushStyle.NoBrush)
-    pen = QPen(QColor("#5fc4f5"), 9)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    painter.setPen(pen)
-    painter.drawArc(ring, 30 * 16, 300 * 16)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor("#bfe9ff"))
-    painter.drawEllipse(QRectF(center + 56, center - 78, 20, 20))
-
-    # микрофон
+    painter.setBrush(QColor("#101a2e"))
+    painter.drawRoundedRect(QRectF(22, 22, size - 44, size - 44), 48, 48)
     painter.setBrush(QColor("#ffffff"))
-    painter.drawRoundedRect(QRectF(center - 22, center - 52, 44, 82), 22, 22)
-    pen = QPen(QColor("#ffffff"), 12)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    painter.setPen(pen)
-    painter.setBrush(Qt.BrushStyle.NoBrush)
-    painter.drawArc(QRectF(center - 42, center - 24, 84, 76), 200 * 16, 140 * 16)
-    painter.drawLine(int(center), int(center + 52), int(center), int(center + 66))
+    painter.drawRoundedRect(QRectF(110, 92, 36, 68), 18, 18)
+    painter.setPen(QPen(QColor("#ffffff"), 10))
+    painter.drawArc(QRectF(92, 100, 72, 64), 200 * 16, 140 * 16)
     painter.end()
     return QIcon(pixmap)
