@@ -24,9 +24,13 @@ from PySide6.QtWidgets import (
 
 from . import APP_TITLE, __version__
 from . import autostart as autostart_mod
-from .config import AUDIO_BACKENDS, INSERT_MODES, LANGUAGES, PASTE_SHORTCUTS, Config
+from .config import AUDIO_BACKENDS, HOTKEY_MODES, INSERT_MODES, LANGUAGES, PASTE_SHORTCUTS, Config
 from .service import ServerManager, health
 
+HOTKEY_MODE_LABELS = {
+    "toggle": "Переключение: нажал — говоришь, нажал — стоп",
+    "press": "Удержание: держишь — пишет, отпустил — вставляет",
+}
 PASTE_LABELS = {
     "ctrl+v": "Ctrl+V — обычные окна",
     "ctrl+shift+v": "Ctrl+Shift+V — терминалы",
@@ -49,6 +53,10 @@ class SettingsDialog(QDialog):
         self.setModal(True)
 
         self._hotkey = QKeySequenceEdit(QKeySequence(cfg.hotkey), self)
+        self._hotkey_mode = QComboBox(self)
+        for value in HOTKEY_MODES:
+            self._hotkey_mode.addItem(HOTKEY_MODE_LABELS.get(value, value), value)
+        self._hotkey_mode.setCurrentIndex(max(0, self._hotkey_mode.findData(cfg.hotkey_mode)))
         self._language = QComboBox(self)
         for value in LANGUAGES:
             self._language.addItem(LANGUAGE_LABELS.get(value, value), value)
@@ -137,6 +145,7 @@ class SettingsDialog(QDialog):
         box = QGroupBox("Хоткей", self)
         form = QFormLayout(box)
         form.addRow("Глобальная комбинация:", self._hotkey)
+        form.addRow("Режим:", self._hotkey_mode)
         hint = QLabel(
             "Комбинацию можно поменять и в System Settings → Shortcuts → Whisper Dictate.",
             box,
@@ -211,6 +220,7 @@ class SettingsDialog(QDialog):
         sequence = self._hotkey.keySequence().toString()
         return self._cfg.with_changes(
             hotkey=sequence or self._cfg.hotkey,
+            hotkey_mode=str(self._hotkey_mode.currentData()),
             language=str(self._language.currentData()),
             server_url=self._server_url.text().strip() or self._cfg.server_url,
             server_command=self._server_command.text().strip(),

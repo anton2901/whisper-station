@@ -56,7 +56,6 @@ def wait_for_free_socket(timeout: float = 12.0) -> bool:
 
 
 class WhisperDictate(QObject):
-    hotkey_activated = Signal()
     # Обновления из фоновых потоков приходят в главный через эти сигналы.
     server_checked = Signal(object)
     notify_async = Signal(str, str, str)
@@ -71,7 +70,7 @@ class WhisperDictate(QObject):
         self._hotkey_text = cfg.hotkey
         self._settings_dialog: SettingsDialog | None = None
 
-        self.hotkey = GlobalHotkey(lambda: self.hotkey_activated.emit())
+        self.hotkey = GlobalHotkey(self._on_hotkey_pressed, self._on_hotkey_released)
         self._build_tray()
         self._wire()
         self._start_ipc()
@@ -121,7 +120,6 @@ class WhisperDictate(QObject):
         self.hud.cancel_requested.connect(self.controller.cancel)
         self.controller.notify_requested.connect(self._notify)
         self.controller.server_status.connect(self._on_server_status)
-        self.hotkey_activated.connect(self.controller.toggle)
         self.server_checked.connect(self._on_server_status)
         self.notify_async.connect(self._notify)
 
@@ -220,6 +218,17 @@ class WhisperDictate(QObject):
         )
         self.tray.setToolTip(f"{APP_TITLE}: {effective}")
         return True
+
+    # --- хоткей ---------------------------------------------------------
+    def _on_hotkey_pressed(self) -> None:
+        if self.cfg.hotkey_mode == "press":
+            self.controller.press_start()
+        else:
+            self.controller.toggle()
+
+    def _on_hotkey_released(self) -> None:
+        if self.cfg.hotkey_mode == "press":
+            self.controller.press_stop()
 
     # --- позиция HUD ----------------------------------------------------
     def _sync_hud_rule(self) -> None:

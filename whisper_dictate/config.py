@@ -20,13 +20,14 @@ log = logging.getLogger(__name__)
 DEFAULT_HOTKEY = "Meta+Alt+D"
 INSERT_MODES = ("paste", "type", "clipboard")
 PASTE_SHORTCUTS = ("ctrl+v", "ctrl+shift+v")
+HOTKEY_MODES = ("toggle", "press")
 AUDIO_BACKENDS = ("auto", "parec", "pw-record")
 LANGUAGES = ("ru", "en", "auto")
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 
 # Секция TOML -> {ключ в файле: поле Config}. Порядок важен для записи.
 SECTIONS: dict[str, dict[str, str]] = {
-    "hotkey": {"toggle": "hotkey"},
+    "hotkey": {"toggle": "hotkey", "mode": "hotkey_mode"},
     "transcribe": {
         "language": "language",
         "server_url": "server_url",
@@ -57,6 +58,7 @@ SECTIONS: dict[str, dict[str, str]] = {
 COMMENTS = {
     "hotkey": {
         "toggle": "глобальный хоткей, например Meta+Alt+D или Alt+M",
+        "mode": "toggle (нажал-нажал) или press (удержание, push-to-talk)",
     },
     "transcribe": {
         "language": "ru, en или auto",
@@ -91,6 +93,7 @@ class Config:
     """Настройки приложения. Значения по умолчанию — рабочие для этой машины."""
 
     hotkey: str = DEFAULT_HOTKEY
+    hotkey_mode: str = "toggle"
     language: str = "ru"
     server_url: str = "http://127.0.0.1:8765"
     server_command: str = ""
@@ -148,6 +151,9 @@ def _coerce(value: Any, default: Any, key: str) -> Any:
 def _validate(cfg: Config) -> Config:
     changes: dict[str, Any] = {}
 
+    if cfg.hotkey_mode not in HOTKEY_MODES:
+        log.warning("config: неизвестный режим хоткея %r, беру toggle", cfg.hotkey_mode)
+        changes["hotkey_mode"] = "toggle"
     if cfg.paste_shortcut not in PASTE_SHORTCUTS:
         log.warning("config: неизвестное сочетание вставки %r, беру ctrl+v", cfg.paste_shortcut)
         changes["paste_shortcut"] = "ctrl+v"

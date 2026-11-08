@@ -85,6 +85,13 @@ class ConfigDefaultsTest(unittest.TestCase):
         self.assertIn("# глобальный хоткей", text)
         self.assertIn('toggle = "Meta+Alt+D"', text)
 
+    def test_hotkey_mode_default_and_validation(self) -> None:
+        self.assertEqual(cfgmod.Config().hotkey_mode, "toggle")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text('[hotkey]\nmode = "hold"\n', encoding="utf-8")
+            self.assertEqual(cfgmod.load(path).hotkey_mode, "toggle")
+
     def test_paste_shortcut_default_and_validation(self) -> None:
         self.assertEqual(cfgmod.Config().paste_shortcut, "ctrl+v")
         self.assertFalse(cfgmod.Config().restore_clipboard)

@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 
 IDLE = "idle"
 
+# Короче этого удержание считаем случайным тапом и просто отменяем запись.
+MIN_HOLD_SECONDS = 0.35
 # Пик ниже — цифровая тишина (шум комнаты на этой машине ~0.004).
 SILENCE_PEAK = 0.008
 # Пик ниже этого — запись тихая: подозрительные фразы отбрасываем.
@@ -79,6 +81,25 @@ class Controller(QObject):
         threading.Thread(
             target=self._prepare, args=(generation,), name="whisper-prepare", daemon=True
         ).start()
+
+    def press_start(self) -> None:
+        """Push-to-talk: клавиша нажата — начинаем запись."""
+        if self.state == IDLE:
+            self.start()
+
+    def press_stop(self) -> None:
+        """Push-to-talk: клавиша отпущена — останавливаем и распознаём."""
+        if self.state == STARTING:
+            # Отпустили раньше, чем поднялся сервер: отменяем запуск.
+            self.cancel()
+            return
+        if self.state != RECORDING:
+            return
+        if self._recorder is not None and self._recorder.elapsed < MIN_HOLD_SECONDS:
+            log.info("controller: удержание %.2f с — отменяю", self._recorder.elapsed)
+            self.cancel()
+            return
+        self.stop()
 
     def stop(self) -> None:
         if self.state != RECORDING:

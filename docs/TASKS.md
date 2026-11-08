@@ -14,7 +14,7 @@
 
 ## Ближайшее
 
-- [ ] Push-to-talk (удержание хоткея) — нужен `globalShortcutReleased`, проверить на KWin
+- [x] Push-to-talk (удержание хоткея) — режим `press`, проверен на KWin
 - [ ] Резервный путь хоткея через `org.freedesktop.portal.GlobalShortcuts` для не-KDE сессий
 - [x] HUD сверху по центру — правилом KWin (wlr-layer-shell KWin не поддерживает)
 - [x] Компактный HUD (300×68) с осциллограммой вместо полоски уровня
