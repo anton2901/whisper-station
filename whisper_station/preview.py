@@ -21,8 +21,8 @@ from .stt import SttError, transcribe
 
 log = logging.getLogger(__name__)
 
-INTERVAL_MS = 1200
-MAX_SECONDS = 15.0
+INTERVAL_MS = 1800
+MAX_SECONDS = 8.0
 TIMEOUT = 20.0
 
 

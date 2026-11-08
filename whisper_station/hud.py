@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from collections import deque
 
-from PySide6.QtCore import QElapsedTimer, QRectF, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter, QPen
+from PySide6.QtCore import QElapsedTimer, QPointF, QRectF, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QGuiApplication, QPainter, QPen
 from PySide6.QtWidgets import QPushButton, QWidget
 
 # Заголовок — маркер для правила KWin; окно настроек его не содержит.
@@ -33,6 +33,9 @@ GRID = QColor(255, 255, 255, 10)
 TICK = QColor(224, 176, 80, 60)
 CENTER_LINE = QColor(255, 255, 255, 24)
 WAVE_GAIN = 2.0
+PREVIEW_SCROLL_SPEED = 1.7  # пикселей за тик 33 мс (~50 px/с)
+PREVIEW_LEFT = 30
+PREVIEW_RIGHT_PAD = 190
 
 
 def _blend(first: QColor, second: QColor, t: float) -> QColor:
@@ -69,6 +72,10 @@ class Hud(QWidget):
 
         self._state = "idle"
         self._preview_text = ""
+        self._scroll_offset = 0.0
+        self._scroll = QTimer(self)
+        self._scroll.setInterval(33)
+        self._scroll.timeout.connect(self._advance_scroll)
         self._bands: deque[tuple[float, float]] = deque(maxlen=WAVE_BARS)
         self._elapsed = QElapsedTimer()
         self._tick = QTimer(self)
@@ -101,12 +108,36 @@ class Hud(QWidget):
 
     def set_preview(self, text: str) -> None:
         """Показать живой предпросмотр распознавания (эксперимент)."""
-        self._preview_text = text.strip()
+        text = text.strip()
+        if text and not self._preview_text:
+            self._scroll_offset = 0.0
+        self._preview_text = text
         self.update()
+
+    def _preview_font(self) -> QFont:
+        font = QFont("monospace")
+        font.setStyleHint(QFont.StyleHint.Monospace)
+        font.setPointSizeF(7.0)
+        font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.4)
+        return font
+
+    def _advance_scroll(self) -> None:
+        """Плавно уводить строку влево, пока виден не весь текст."""
+        if not self._preview_text:
+            return
+        metrics = QFontMetrics(self._preview_font())
+        full = metrics.horizontalAdvance(self._preview_text)
+        available = WIDTH - PREVIEW_RIGHT_PAD - PREVIEW_LEFT
+        target = min(0.0, available - full)
+        if self._scroll_offset > target:
+            self._scroll_offset = max(target, self._scroll_offset - PREVIEW_SCROLL_SPEED)
+            self.update()
 
     def begin_recording(self) -> None:
         self._state = "recording"
         self._preview_text = ""
+        self._scroll_offset = 0.0
+        self._scroll.start()
         self._bands.clear()
         self._elapsed.restart()
         self._tick.start()
@@ -119,8 +150,13 @@ class Hud(QWidget):
 
     def finish(self) -> None:
         self._tick.stop()
+        self._scroll.stop()
         self._state = "idle"
         self._preview_text = ""
+        self._scroll_offset = 0.0
+        self._scroll = QTimer(self)
+        self._scroll.setInterval(33)
+        self._scroll.timeout.connect(self._advance_scroll)
         self._preview_text = ""
         self._bands.clear()
         self.hide()
@@ -229,12 +265,18 @@ class Hud(QWidget):
         painter.setFont(label_font)
         painter.setPen(MUTED)
         if self._preview_text:
-            painter.setPen(ACCENT)
-            metrics = painter.fontMetrics()
-            text = metrics.elidedText(
-                self._preview_text, Qt.TextElideMode.ElideLeft, WIDTH - 200
+            painter.save()
+            painter.setFont(self._preview_font())
+            available = WIDTH - PREVIEW_RIGHT_PAD - PREVIEW_LEFT
+            painter.setClipRect(
+                QRectF(PREVIEW_LEFT, HEIGHT - 24, available, 18)
             )
-            painter.drawText(30, HEIGHT - 10, text)
+            painter.setPen(ACCENT)
+            painter.drawText(
+                QPointF(PREVIEW_LEFT + self._scroll_offset, HEIGHT - 10),
+                self._preview_text,
+            )
+            painter.restore()
         else:
             label = "Распознаю…" if self._state == "transcribing" else "WHISPER STATION"
             painter.setPen(MUTED)
