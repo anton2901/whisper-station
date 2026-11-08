@@ -1,4 +1,4 @@
-"""whisper-dictate — локальная диктовка для KDE Plasma 6 / Wayland.
+"""whisper-station — локальная диктовка для KDE Plasma 6 / Wayland.
 
 Запись микрофона по глобальному хоткею, распознавание локальной моделью
 Whisper и вставка текста в активное окно. Без сети за пределами 127.0.0.1.
@@ -6,5 +6,5 @@ Whisper и вставка текста в активное окно. Без се
 
 __version__ = "0.2.0"
 
-APP_NAME = "whisper-dictate"
-APP_TITLE = "Whisper Dictate"
+APP_NAME = "whisper-station"
+APP_TITLE = "Whisper Station"

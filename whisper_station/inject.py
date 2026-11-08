@@ -372,7 +372,7 @@ def _do_restore(previous: str, expected: str) -> None:
 
 
 def check_environment() -> dict[str, object]:
-    """Диагностика для `whisper-dictate doctor`."""
+    """Диагностика для `whisper-station doctor`."""
     info: dict[str, object] = {
         "wayland": os.environ.get("XDG_SESSION_TYPE") == "wayland",
         "desktop": os.environ.get("XDG_CURRENT_DESKTOP", ""),

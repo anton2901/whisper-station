@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Запуск из репозитория без установки: bin/whisper-dictate [command]
+# Запуск из репозитория без установки: bin/whisper-station [command]
 set -euo pipefail
 here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 export PYTHONPATH="$here/..${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m whisper_dictate "$@"
+exec python3 -m whisper_station "$@"

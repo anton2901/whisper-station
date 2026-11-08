@@ -126,7 +126,7 @@ def transcribe(
     if not is_loopback_url(cfg.server_url):
         raise SttError(f"Адрес {cfg.server_url} не локальный — отправка запрещена")
 
-    boundary = f"----whisper-dictate-{uuid.uuid4().hex}"
+    boundary = f"----whisper-station-{uuid.uuid4().hex}"
     body = build_multipart(
         fields={"language": cfg.language, "response_format": "json"},
         files={"file": (filename, wav, "audio/wav")},

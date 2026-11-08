@@ -31,7 +31,7 @@ def resolve_exec() -> tuple[str, str | None]:
     if installed:
         return f"{installed} daemon", None
     repo = Path(__file__).resolve().parent.parent
-    return f"{sys.executable} -m whisper_dictate daemon", f"PYTHONPATH={repo}"
+    return f"{sys.executable} -m whisper_station daemon", f"PYTHONPATH={repo}"
 
 
 def unit_text(exec_start: str, environment: str | None = None) -> str:

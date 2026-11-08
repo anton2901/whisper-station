@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Whisper Dictate
+Name=Whisper Station
 GenericName=Локальная диктовка
 Comment=Запись микрофона, распознавание Whisper и вставка текста в активное окно
-Exec=whisper-dictate daemon
-Icon=whisper-dictate
+Exec=whisper-station daemon
+Icon=whisper-station
 Terminal=false
 Categories=Utility;
 Keywords=dictation;whisper;speech;диктовка;распознавание;

@@ -112,7 +112,7 @@ Flatpak, пакеты для Debian/Fedora и распространение с�
 
 ## 2026-11-08 — systemd user-юнит как альтернатива autostart
 
-`whisper-dictate systemd enable` пишет `~/.config/systemd/user/whisper-dictate.service`,
+`whisper-station systemd enable` пишет `~/.config/systemd/user/whisper-station.service`,
 включает его и отключает autostart-файл, чтобы не было двух копий. Юнит даёт
 автоперезапуск при падении и логи в journalctl.
 **Платим:** два механизма автозапуска сосуществуют, при включении юнита autostart
@@ -130,7 +130,7 @@ Flatpak, пакеты для Debian/Fedora и распространение с�
 
 ## 2026-11-08 — Автозапуск в диалоге берётся из файла
 
-`whisper-dictate autostart on` пишет `.desktop`, но не `config.toml`, поэтому галочка
+`whisper-station autostart on` пишет `.desktop`, но не `config.toml`, поэтому галочка
 в настройках была снята и «Сохранить» молча выключал автозапуск. Теперь диалог читает
 фактическое состояние файла автозапуска.
 
@@ -154,14 +154,14 @@ Flatpak, пакеты для Debian/Fedora и распространение с�
 `tools/check.py` (синтаксис, длина строк, импорты, `print`) закрывают потребности.
 **Платим:** нет автoфикса и продвинутых правил.
 
-## 2026-11-07 — Код в `/usr/lib/whisper-dictate` + обёртка
+## 2026-11-07 — Код в `/usr/lib/whisper-station` + обёртка
 
 Пакет не пишет в `site-packages` и не конфликтует с системными Python-пакетами;
 обёртка выставляет `PYTHONPATH`.
-**Платим:** `python -m whisper_dictate` вне пакета требует `PYTHONPATH=.`.
+**Платим:** `python -m whisper_station` вне пакета требует `PYTHONPATH=.`.
 
 ## 2026-11-08 — Лицензия GPL-3.0
 
 Проект распространяется по GNU GPL v3 (`LICENSE`, `license=('GPL-3.0-only')`),
-файл ставится в `/usr/share/licenses/whisper-dictate`.
+файл ставится в `/usr/share/licenses/whisper-station`.
 **Платим:** производные обязаны оставаться под GPL-3.0.

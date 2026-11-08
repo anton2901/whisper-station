@@ -37,7 +37,7 @@ def check_file(path: Path) -> list[str]:
         return errors
 
     is_package_init = path.name == "__init__.py"
-    if not is_package_init and relative.parts[0] == "whisper_dictate" and not ast.get_docstring(tree):
+    if not is_package_init and relative.parts[0] == "whisper_station" and not ast.get_docstring(tree):
         errors.append(f"{relative}: нет docstring модуля")
 
     imported: dict[str, int] = {}
@@ -61,7 +61,7 @@ def check_file(path: Path) -> list[str]:
             if name not in used:
                 errors.append(f"{relative}:{lineno}: импорт {name!r} не используется")
 
-    if relative.parts[0] == "whisper_dictate" and path.name not in PRINT_ALLOWED:
+    if relative.parts[0] == "whisper_station" and path.name not in PRINT_ALLOWED:
         for node in ast.walk(tree):
             if (
                 isinstance(node, ast.Call)
@@ -75,7 +75,7 @@ def check_file(path: Path) -> list[str]:
 
 def main() -> int:
     targets = sorted(
-        [*ROOT.glob("whisper_dictate/**/*.py"), *ROOT.glob("tests/**/*.py"), *ROOT.glob("tools/*.py")]
+        [*ROOT.glob("whisper_station/**/*.py"), *ROOT.glob("tests/**/*.py"), *ROOT.glob("tools/*.py")]
     )
     errors: list[str] = []
     for path in targets:

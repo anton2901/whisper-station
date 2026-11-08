@@ -15,8 +15,8 @@
 - Вставка в терминалы: сочетание `Ctrl+V` / `Ctrl+Shift+V` выбирается в настройках.
 - Повтор вставки: пункт трея «Вставить последний текст» и команда `repaste`.
 - Звуковые сигналы старта и остановки через `canberra-gtk-play`.
-- `whisper-dictate model status|download` — наличие модели и загрузка по `--yes`.
-- `whisper-dictate systemd install|enable|disable|status` — user-юнит с автоперезапуском.
+- `whisper-station model status|download` — наличие модели и загрузка по `--yes`.
+- `whisper-station systemd install|enable|disable|status` — user-юнит с автоперезапуском.
 - Схема архитектуры (Archify) в `.archify/`.
 - Лицензия GPL-3.0.
 

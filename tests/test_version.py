@@ -7,7 +7,7 @@ import tomllib
 import unittest
 from pathlib import Path
 
-from whisper_dictate import __version__
+from whisper_station import __version__
 
 ROOT = Path(__file__).resolve().parent.parent
 

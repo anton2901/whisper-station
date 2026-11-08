@@ -7,9 +7,9 @@ from unittest import mock
 
 from PySide6.QtCore import QCoreApplication
 
-from whisper_dictate.config import Config
-from whisper_dictate.controller import MIN_HOLD_SECONDS, Controller
-from whisper_dictate import controller as controller_module
+from whisper_station.config import Config
+from whisper_station.controller import MIN_HOLD_SECONDS, Controller
+from whisper_station import controller as controller_module
 
 
 class FakeServer:

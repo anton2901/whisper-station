@@ -1,4 +1,4 @@
-"""Конфигурация: TOML в ~/.config/whisper-dictate/config.toml.
+"""Конфигурация: TOML в ~/.config/whisper-station/config.toml.
 
 Читаем через стандартный tomllib, пишем вручную: файл маленький и должен
 оставаться читаемым человеком (комментарии, порядок секций).
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from .paths import config_file
+from .paths import config_file, legacy_config_file
 
 log = logging.getLogger(__name__)
 
@@ -187,11 +187,18 @@ def _validate(cfg: Config) -> Config:
 
 def load(path: Path | None = None) -> Config:
     """Прочитать конфиг; отсутствие файла — это нормально (берём умолчания)."""
+    explicit = path is not None
     path = path or config_file()
     cfg = Config()
     try:
         raw = tomllib.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
+        legacy = legacy_config_file()
+        if not explicit and legacy.is_file():
+            log.info("config: переношу настройки из %s", legacy)
+            migrated = load(legacy)
+            save(migrated)
+            return migrated
         log.info("config: %s не найден, использую значения по умолчанию", path)
         return cfg
     except (OSError, tomllib.TOMLDecodeError) as exc:
@@ -222,7 +229,7 @@ def _toml_value(value: Any) -> str:
 def dumps(cfg: Config) -> str:
     """Сериализовать конфиг в TOML с комментариями."""
     by_field = {f.name: getattr(cfg, f.name) for f in fields(Config)}
-    lines = ["# Конфигурация whisper-dictate. Правки применяются при перезапуске."]
+    lines = ["# Конфигурация whisper-station. Правки применяются при перезапуске."]
     for section, mapping in SECTIONS.items():
         lines.append("")
         lines.append(f"[{section}]")
@@ -246,8 +253,8 @@ def find_server_command() -> str | None:
     """Найти run.sh существующего сервиса Whisper, чтобы не качать модель заново."""
     candidates = [
         Path.home() / "Documents" / "dsh-set" / ".whisper-local" / "run.sh",
-        Path.home() / ".local" / "share" / "whisper-dictate" / "run.sh",
-        Path.home() / ".config" / "whisper-dictate" / "run.sh",
+        Path.home() / ".local" / "share" / "whisper-station" / "run.sh",
+        Path.home() / ".config" / "whisper-station" / "run.sh",
     ]
     for candidate in candidates:
         if candidate.is_file():

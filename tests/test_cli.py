@@ -8,8 +8,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from whisper_dictate import cli, ipc
-from whisper_dictate.config import Config
+from whisper_station import cli, ipc
+from whisper_station.config import Config
 
 
 class ParserTest(unittest.TestCase):

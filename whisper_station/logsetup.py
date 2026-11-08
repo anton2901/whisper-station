@@ -1,4 +1,4 @@
-"""Логирование: файл в ~/.local/state/whisper-dictate/app.log + консоль в TTY."""
+"""Логирование: файл в ~/.local/state/whisper-station/app.log + консоль в TTY."""
 
 from __future__ import annotations
 

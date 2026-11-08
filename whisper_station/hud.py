@@ -23,7 +23,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QPushButton, QWidget
 
 # Заголовок — маркер для правила KWin; окно настроек его не содержит.
-TITLE = "Whisper Dictate HUD"
+TITLE = "Whisper Station HUD"
 
 WIDTH = 300
 HEIGHT = 68

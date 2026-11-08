@@ -7,27 +7,27 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from whisper_dictate import autostart
+from whisper_station import autostart
 
 
 class AutostartTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.path = Path(self.tmp.name) / "autostart" / "whisper-dictate.desktop"
+        self.path = Path(self.tmp.name) / "autostart" / "whisper-station.desktop"
         patcher = mock.patch.object(autostart, "autostart_file", return_value=self.path)
         patcher.start()
         self.addCleanup(patcher.stop)
 
     def test_desktop_entry(self) -> None:
-        entry = autostart.desktop_entry("/usr/bin/whisper-dictate")
-        self.assertIn("Exec=/usr/bin/whisper-dictate daemon", entry)
+        entry = autostart.desktop_entry("/usr/bin/whisper-station")
+        self.assertIn("Exec=/usr/bin/whisper-station daemon", entry)
         self.assertIn("Type=Application", entry)
-        self.assertIn("Icon=whisper-dictate", entry)
+        self.assertIn("Icon=whisper-station", entry)
 
     def test_enable_and_disable(self) -> None:
         self.assertFalse(autostart.is_enabled())
-        autostart.enable("/usr/bin/whisper-dictate")
+        autostart.enable("/usr/bin/whisper-station")
         self.assertTrue(autostart.is_enabled())
         self.assertIn("daemon", self.path.read_text(encoding="utf-8"))
         autostart.disable()
@@ -39,7 +39,7 @@ class AutostartTest(unittest.TestCase):
         self.assertFalse(autostart.is_enabled())
 
     def test_apply_follows_flag(self) -> None:
-        autostart.apply(True, "/usr/bin/whisper-dictate")
+        autostart.apply(True, "/usr/bin/whisper-station")
         self.assertTrue(autostart.is_enabled())
         autostart.apply(False)
         self.assertFalse(autostart.is_enabled())

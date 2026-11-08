@@ -10,8 +10,8 @@ import wave
 from io import BytesIO
 from pathlib import Path
 
-from whisper_dictate.config import Config
-from whisper_dictate.recorder import (
+from whisper_station.config import Config
+from whisper_station.recorder import (
     Recorder,
     RecorderError,
     normalize_pcm,

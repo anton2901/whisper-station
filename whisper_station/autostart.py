@@ -1,4 +1,4 @@
-"""Автозапуск при входе: ~/.config/autostart/whisper-dictate.desktop."""
+"""Автозапуск при входе: ~/.config/autostart/whisper-station.desktop."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def launcher_command() -> str:
     installed = shutil.which(APP_NAME)
     if installed:
         return installed
-    return f"{sys.executable} -m whisper_dictate"
+    return f"{sys.executable} -m whisper_station"
 
 
 def desktop_entry(command: str | None = None) -> str:

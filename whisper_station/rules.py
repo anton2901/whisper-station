@@ -22,8 +22,8 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-APP_ID = "whisper-dictate"
-HUD_TITLE = "Whisper Dictate HUD"
+APP_ID = "whisper-station"
+HUD_TITLE = "Whisper Station HUD"
 RULE_ID = 991001
 CONFIG_NAME = "kwinrulesrc"
 
@@ -32,7 +32,7 @@ HUD_HEIGHT = 68   # должно совпадать с hud.HEIGHT
 MARGIN_TOP = 72   # ниже верхней панели Plasma, чтобы не срабатывало автоскрытие
 
 RULE_KEYS = (
-    ("Description", "Whisper Dictate HUD (ставит само приложение)"),
+    ("Description", "Whisper Station HUD (ставит само приложение)"),
     ("wmclass", APP_ID),
     ("wmclasscomplete", "false"),
     ("wmclassmatch", "1"),

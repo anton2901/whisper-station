@@ -7,29 +7,40 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from whisper_dictate import models, sounds, systemd_unit
+from whisper_station import models, sounds, systemd_unit
 
 
 class SoundsTest(unittest.TestCase):
-    def test_command_known_kinds(self) -> None:
-        with mock.patch.object(sounds, "available", return_value=True):
-            self.assertIn("canberra-gtk-play", sounds.command("start")[0])
-            self.assertIn("complete", sounds.command("stop"))
+    def test_uses_generated_files(self) -> None:
+        command = sounds.command("start")
+        self.assertIsNotNone(command)
+        self.assertIn(command[0], sounds.PLAYERS)
+        self.assertTrue(command[1].endswith("start.wav"))
+        self.assertTrue(sounds.command("stop")[1].endswith("stop.wav"))
         self.assertIsNone(sounds.command("unknown"))
 
-    def test_command_without_canberra(self) -> None:
-        with mock.patch.object(sounds, "available", return_value=False):
-            self.assertIsNone(sounds.command("start"))
+    def test_files_exist_in_repo(self) -> None:
+        for kind in ("start", "stop"):
+            path = sounds.sound_file(kind)
+            self.assertIsNotNone(path, kind)
+            self.assertGreater(path.stat().st_size, 1000)
+
+    def test_falls_back_to_canberra_event(self) -> None:
+        with mock.patch.object(sounds, "sound_file", return_value=None):
+            with mock.patch.object(sounds.shutil, "which", return_value="/usr/bin/canberra-gtk-play"):
+                command = sounds.command("stop")
+        self.assertEqual(command[:2], ["canberra-gtk-play", "-i"])
+        self.assertEqual(command[2], "complete")
 
     def test_play_does_not_raise(self) -> None:
-        with mock.patch.object(sounds, "available", return_value=False):
+        with mock.patch.object(sounds, "command", return_value=None):
             sounds.play("start")  # звонок Qt или тишина, но без исключения
 
 
 class SystemdTest(unittest.TestCase):
     def test_unit_text(self) -> None:
-        text = systemd_unit.unit_text("/usr/bin/whisper-dictate daemon", "PYTHONPATH=/opt/app")
-        self.assertIn("ExecStart=/usr/bin/whisper-dictate daemon", text)
+        text = systemd_unit.unit_text("/usr/bin/whisper-station daemon", "PYTHONPATH=/opt/app")
+        self.assertIn("ExecStart=/usr/bin/whisper-station daemon", text)
         self.assertIn("Environment=PYTHONPATH=/opt/app", text)
         self.assertIn("Restart=on-failure", text)
         self.assertIn("WantedBy=graphical-session.target", text)

@@ -5,16 +5,16 @@
 ```sh
 make test     # python3 -m unittest discover -s tests -t .
 make lint     # python3 tools/check.py
-make run      # PYTHONPATH=. python3 -m whisper_dictate
+make run      # PYTHONPATH=. python3 -m whisper_station
 make doctor   # бинарь из bin/ + проверка окружения
 makepkg -f    # сборка пакета (без установки)
 ```
 
-`bin/whisper-dictate <команда>` — то же, что `make run`, но с аргументами CLI.
+`bin/whisper-station <команда>` — то же, что `make run`, но с аргументами CLI.
 
 ## Структура
 
-- `whisper_dictate/` — код: `cli.py` (CLI), `app.py` (трей, IPC), `controller.py`
+- `whisper_station/` — код: `cli.py` (CLI), `app.py` (трей, IPC), `controller.py`
   (состояния), `recorder.py`, `stt.py`, `inject.py`, `hotkey.py`, `service.py`,
   `hud.py`, `settings_ui.py`, `config.py`.
 - `tests/` — unittest, по файлу на модуль. Тесты рядом с кодом не создаём.
@@ -31,6 +31,6 @@ makepkg -f    # сборка пакета (без установки)
 - Не менять `.whisper-local/**` (это общий сервис DSH) и не убивать чужой сервер.
 - `ydotoold` запускается от пользователя; права, группы и `uinput` не настраивать.
 - Перед PR/коммитом: `make lint && make test`. Красные тесты не коммитить.
-- Конфиг — только через `config.py`; путь `~/.config/whisper-dictate/config.toml`.
+- Конфиг — только через `config.py`; путь `~/.config/whisper-station/config.toml`.
 - Диаграммы Archify — в `.archify/<type>-<slug>-<время>/`: `candidate.json` и HTML коммитим,
   `visual-check/` (скриншоты) — генерируемый артефакт, он в `.gitignore`.

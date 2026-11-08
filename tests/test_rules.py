@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from whisper_dictate import rules
+from whisper_station import rules
 
 
 class PositionTest(unittest.TestCase):
@@ -66,7 +66,7 @@ class RuleFileTest(unittest.TestCase):
         text = self.config.read_text(encoding="utf-8")
         self.assertIn(f"[{rules.RULE_ID}]", text)
         self.assertIn("position=1540,40", text)
-        self.assertIn("wmclass=whisper-dictate", text)
+        self.assertIn("wmclass=whisper-station", text)
         self.assertIn("positionrule=2", text)
         self.assertTrue(rules.rule_present(config=self.config))
 

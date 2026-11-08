@@ -46,7 +46,7 @@ def spawn_daemon() -> None:
         command = [installed, "daemon"]
         env = None
     else:
-        command = [sys.executable, "-m", "whisper_dictate", "daemon"]
+        command = [sys.executable, "-m", "whisper_station", "daemon"]
         env = dict(os.environ)
         source_root = str(Path(__file__).resolve().parent.parent)
         env["PYTHONPATH"] = source_root + (

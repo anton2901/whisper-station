@@ -113,7 +113,7 @@ class SettingsDialog(QDialog):
         self._hud_pin_top.setChecked(cfg.hud_pin_top)
         self._autostart = QCheckBox("Запускать при входе в сессию", self)
         # Состояние берём из файла автозапуска, а не из config.toml: его можно
-        # включить командой `whisper-dictate autostart on`, и тогда сохранение
+        # включить командой `whisper-station autostart on`, и тогда сохранение
         # настроек не должно молча выключать автозапуск.
         self._autostart.setChecked(autostart_mod.is_enabled())
 
@@ -147,7 +147,7 @@ class SettingsDialog(QDialog):
         form.addRow("Глобальная комбинация:", self._hotkey)
         form.addRow("Режим:", self._hotkey_mode)
         hint = QLabel(
-            "Комбинацию можно поменять и в System Settings → Shortcuts → Whisper Dictate.",
+            "Комбинацию можно поменять и в System Settings → Shortcuts → Whisper Station.",
             box,
         )
         hint.setWordWrap(True)

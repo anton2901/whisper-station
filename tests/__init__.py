@@ -1,1 +1,1 @@
-"""Тесты проекта whisper-dictate."""
+"""Тесты проекта whisper-station."""

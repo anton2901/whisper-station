@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from whisper_dictate import inject
-from whisper_dictate.config import Config
+from whisper_station import inject
+from whisper_station.config import Config
 
 FAKE_WL_COPY = """#!/bin/sh
 if [ "$1" = "--clear" ]; then : > "$FAKE_CLIP_FILE"; exit 0; fi

@@ -138,7 +138,7 @@ class Recorder:
         backend = self.resolve_backend()
         command = self.command(backend)
         self._buffer = bytearray()
-        self._stderr = tempfile.NamedTemporaryFile(prefix="whisper-dictate-", suffix=".log")
+        self._stderr = tempfile.NamedTemporaryFile(prefix="whisper-station-", suffix=".log")
         log.info("recorder: старт %s", " ".join(command))
         try:
             self._proc = subprocess.Popen(  # noqa: S603 - фиксированные аргументы

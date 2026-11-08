@@ -9,10 +9,10 @@ import threading
 import unittest
 from unittest import mock
 
-from whisper_dictate import service
-from whisper_dictate.config import Config
-from whisper_dictate.service import ServerManager, ServerStatus, health
-from whisper_dictate.stt import ServerUnavailable
+from whisper_station import service
+from whisper_station.config import Config
+from whisper_station.service import ServerManager, ServerStatus, health
+from whisper_station.stt import ServerUnavailable
 
 
 class _HealthHandler(http.server.BaseHTTPRequestHandler):

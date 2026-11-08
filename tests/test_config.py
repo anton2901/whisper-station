@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
-from whisper_dictate import config as cfgmod
+from whisper_station import config as cfgmod
 
 
 class ConfigDefaultsTest(unittest.TestCase):
@@ -84,6 +85,17 @@ class ConfigDefaultsTest(unittest.TestCase):
             self.assertIn(f"[{section}]", text)
         self.assertIn("# глобальный хоткей", text)
         self.assertIn('toggle = "Meta+Alt+D"', text)
+
+    def test_migrates_config_from_old_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            legacy = Path(tmp) / "whisper-dictate"
+            legacy.mkdir()
+            (legacy / "config.toml").write_text('[hotkey]\ntoggle = "Alt+M"\n', encoding="utf-8")
+            with mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": tmp}):
+                cfg = cfgmod.load()
+                new_file = Path(tmp) / "whisper-station" / "config.toml"
+                self.assertTrue(new_file.is_file())
+        self.assertEqual(cfg.hotkey, "Alt+M")
 
     def test_hotkey_mode_default_and_validation(self) -> None:
         self.assertEqual(cfgmod.Config().hotkey_mode, "toggle")

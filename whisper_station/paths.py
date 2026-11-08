@@ -33,6 +33,11 @@ def config_file() -> Path:
     return config_dir() / "config.toml"
 
 
+def legacy_config_file() -> Path:
+    """Файл настроек под прежним именем приложения (до переименования)."""
+    return config_home() / "whisper-dictate" / "config.toml"
+
+
 def state_dir() -> Path:
     return state_home() / APP_NAME
 

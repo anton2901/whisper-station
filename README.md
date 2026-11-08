@@ -1,4 +1,4 @@
-# whisper-dictate
+# whisper-station
 
 Локальная диктовка для KDE Plasma 6 / Wayland: глобальный хоткей → запись микрофона →
 распознавание локальной моделью Whisper → текст в активном окне. Без облака и телеметрии:
@@ -13,7 +13,7 @@
 - сервер распознавания на `127.0.0.1:8765` (OpenAI-совместимый, faster-whisper);
 - `ydotool` и доступ к `/dev/uinput` — для вставки через Ctrl+V (на CachyOS ACL уже есть).
 
-Готовность проверить одной командой: `bin/whisper-dictate doctor`.
+Готовность проверить одной командой: `bin/whisper-station doctor`.
 
 ## Запуск из репозитория
 
@@ -26,27 +26,30 @@ make doctor      # проверка окружения: хоткей, встав
 
 Второй экземпляр не запускается: демон держит UNIX-сокет в `$XDG_RUNTIME_DIR`.
 
+> Приложение раньше называлось `whisper-dictate`. Настройки из
+> `~/.config/whisper-dictate/config.toml` переносятся автоматически при первом запуске.
+
 ## Установка пакетом
 
 ```sh
 makepkg -f                       # собрать (зависимости должны стоять)
-sudo pacman -U whisper-dictate-0.1.0-1-any.pkg.tar.zst
+sudo pacman -U whisper-station-0.1.0-1-any.pkg.tar.zst
 ```
 
-Пакет кладёт код в `/usr/lib/whisper-dictate`, обёртку — в `/usr/bin/whisper-dictate`,
+Пакет кладёт код в `/usr/lib/whisper-station`, обёртку — в `/usr/bin/whisper-station`,
 `.desktop` и иконку — в `/usr/share`. После установки:
 
 ```sh
-whisper-dictate                    # запустить демон (трей)
-whisper-dictate autostart on       # автозапуск при входе
+whisper-station                    # запустить демон (трей)
+whisper-station autostart on       # автозапуск при входе
 ```
 
-Автозапуск пишет `~/.config/autostart/whisper-dictate.desktop`
-(`Exec=/usr/bin/whisper-dictate daemon`).
+Автозапуск пишет `~/.config/autostart/whisper-station.desktop`
+(`Exec=/usr/bin/whisper-station daemon`).
 
 ## Как пользоваться
 
-1. Запустите `whisper-dictate` (трей) — или включите автозапуск в настройках.
+1. Запустите `whisper-station` (трей) — или включите автозапуск в настройках.
 2. Нажмите `Meta+Alt+D`, говорите, нажмите ещё раз. Появится компактный HUD
    с осциллограммой голоса и таймером.
 3. Текст распознаётся и вставляется в активное окно (буфер + Ctrl+V).
@@ -70,12 +73,12 @@ whisper-dictate autostart on       # автозапуск при входе
 
 ## Настройки
 
-`~/.config/whisper-dictate/config.toml` или окно «Настройки…» в трее: хоткей, язык,
+`~/.config/whisper-station/config.toml` или окно «Настройки…» в трее: хоткей, язык,
 адрес и команда сервера, способ вставки (`paste`/`type`/`clipboard`), восстановление
 буфера, автозапуск, звуковой сигнал, длительности записи.
 
-Хоткей также виден в System Settings → Shortcuts → Whisper Dictate: менять можно там.
-Резервный вариант для любой сессии — назначить сочетание на команду `whisper-dictate toggle`.
+Хоткей также виден в System Settings → Shortcuts → Whisper Station: менять можно там.
+Резервный вариант для любой сессии — назначить сочетание на команду `whisper-station toggle`.
 
 ## Команды
 
@@ -93,7 +96,7 @@ whisper-dictate autostart on       # автозапуск при входе
   XDG-портал `GlobalShortcuts` не используется.
 - HUD на время записи забирает фокус (KWin не даёт клавиатуру окну без фокуса, иначе
   не работают Esc и кнопки). Перед вставкой HUD прячется, фокус возвращается в окно.
-- Позиция HUD задаётся правилом KWin «Whisper Dictate HUD» (верх экрана по центру):
+- Позиция HUD задаётся правилом KWin «Whisper Station HUD» (верх экрана по центру):
   Wayland не позволяет клиенту двигать окна. Правило видно и удаляется в
   System Settings → Window Rules; отключается галочкой в настройках приложения.
 - Запись идёт через `pw-record`: `parec` на PipeWire не отдаёт данные, если stdout — pipe
@@ -107,8 +110,8 @@ whisper-dictate autostart on       # автозапуск при входе
 ## Удаление
 
 ```sh
-sudo pacman -R whisper-dictate
-rm -rf ~/.config/whisper-dictate ~/.local/state/whisper-dictate
+sudo pacman -R whisper-station
+rm -rf ~/.config/whisper-station ~/.local/state/whisper-station
 ```
 
 Лицензия: **GNU GPL v3** (`LICENSE`).
@@ -116,4 +119,4 @@ rm -rf ~/.config/whisper-dictate ~/.local/state/whisper-dictate
 Архитектура и решения — `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, проверки — `docs/VERIFICATION.md`.
 
 Схема архитектуры (интерактивный HTML, генерируется Archify из `candidate.json`):
-`.archify/architecture-whisper-dictate-20261107-194924/whisper-dictate.html`.
+`.archify/architecture-whisper-station-20261107-194924/whisper-station.html`.

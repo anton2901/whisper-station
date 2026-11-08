@@ -1,10 +1,10 @@
 # Maintainer: av <av@localhost>
-pkgname=whisper-dictate
+pkgname=whisper-station
 pkgver=0.2.0
 pkgrel=1
 pkgdesc="Локальная диктовка для KDE Plasma 6 / Wayland: хоткей, HUD, вставка текста"
 arch=('any')
-url="https://example.invalid/whisper-dictate"
+url="https://example.invalid/whisper-station"
 license=('GPL-3.0-only')
 depends=(
   'python'
@@ -31,7 +31,7 @@ package() {
   local libdir="$pkgdir/usr/lib/$pkgname"
 
   install -dm755 "$libdir"
-  cp -a "$startdir/whisper_dictate" "$libdir/"
+  cp -a "$startdir/whisper_station" "$libdir/"
   # Байткод не тащим в пакет: он пересоберётся при первом запуске.
   find "$libdir" -name '__pycache__' -type d -prune -exec rm -rf {} +
   # Репозиторий может иметь строгий umask (600/700) — в пакете права должны
@@ -41,15 +41,18 @@ package() {
 
   install -Dm755 /dev/stdin "$pkgdir/usr/bin/$pkgname" <<'WRAPPER'
 #!/bin/sh
-# Обёртка: код лежит в /usr/lib/whisper-dictate, а не в site-packages.
-export PYTHONPATH="/usr/lib/whisper-dictate${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m whisper_dictate "$@"
+# Обёртка: код лежит в /usr/lib/whisper-station, а не в site-packages.
+export PYTHONPATH="/usr/lib/whisper-station${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m whisper_station "$@"
 WRAPPER
 
   install -Dm644 "$startdir/packaging/$pkgname.desktop" \
     "$pkgdir/usr/share/applications/$pkgname.desktop"
   install -Dm644 "$startdir/packaging/$pkgname.svg" \
     "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg"
+  install -d "$pkgdir/usr/share/$pkgname/sounds"
+  install -m644 "$startdir/packaging/sounds/"*.wav \
+    "$pkgdir/usr/share/$pkgname/sounds/"
   install -Dm644 "$startdir/README.md" \
     "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 "$startdir/LICENSE" \

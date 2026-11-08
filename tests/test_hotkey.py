@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from whisper_dictate.hotkey import (
+from whisper_station.hotkey import (
     ActionId,
     GlobalHotkey,
     HotkeyError,
@@ -35,10 +35,10 @@ class ShortcutEncodingTest(unittest.TestCase):
 
 class ActionIdTest(unittest.TestCase):
     def test_order_matches_kglobalaccel(self) -> None:
-        action = ActionId("whisper-dictate", "toggle", "Whisper Dictate", "Диктовка")
+        action = ActionId("whisper-station", "toggle", "Whisper Station", "Диктовка")
         self.assertEqual(
             action.as_list(),
-            ["whisper-dictate", "toggle", "Whisper Dictate", "Диктовка"],
+            ["whisper-station", "toggle", "Whisper Station", "Диктовка"],
         )
 
 

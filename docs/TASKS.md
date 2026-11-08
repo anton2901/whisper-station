@@ -19,12 +19,12 @@
 - [x] HUD сверху по центру — правилом KWin (wlr-layer-shell KWin не поддерживает)
 - [x] Компактный HUD (300×68) с осциллограммой вместо полоски уровня
 - [x] Запись через `pw-record --raw`: `parec` молчит в pipe, а без `--raw` идёт AU/float32
-- [x] Установка пакетом в `/usr/lib/whisper-dictate` и автозапуск при входе
+- [x] Установка пакетом в `/usr/lib/whisper-station` и автозапуск при входе
 - [x] Схема архитектуры (Archify, showcase) в `.archify/` с проверенными гейтами
 - [x] Вставка в терминалы: настраиваемое сочетание Ctrl+V / Ctrl+Shift+V, безопасный буфер
 - [x] Падение при сохранении настроек (SIGSEGV в libdbus) — исправлено
 - [x] Звуковые сигналы через `libcanberra` вместо `QApplication.beep()`
-- [x] Команда `whisper-dictate model download` с явным подтверждением
+- [x] Команда `whisper-station model download` с явным подтверждением
 - [x] `systemd --user` юнит как альтернатива autostart
 - [x] Ретрай записи и пункт трея «Вставить последний текст»
 - [x] Лицензия GPL-3.0

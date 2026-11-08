@@ -1,4 +1,4 @@
-"""Точка входа: python -m whisper_dictate."""
+"""Точка входа: python -m whisper_station."""
 
 from __future__ import annotations
 

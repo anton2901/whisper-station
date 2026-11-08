@@ -6,9 +6,9 @@ import http.server
 import threading
 import unittest
 
-from whisper_dictate.config import Config
-from whisper_dictate.recorder import pcm_to_wav
-from whisper_dictate.stt import SttError, ServerUnavailable, build_multipart, transcribe
+from whisper_station.config import Config
+from whisper_station.recorder import pcm_to_wav
+from whisper_station.stt import SttError, ServerUnavailable, build_multipart, transcribe
 
 WAV = pcm_to_wav(b"\x00\x00" * 1600)
 

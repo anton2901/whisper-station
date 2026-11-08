@@ -9,14 +9,14 @@ PySide6 6.12.0. Сервер Whisper: `large-v3-turbo`, CUDA float16, `127.0.0.1
 |---|---|---|
 | Тесты | `make test` | 70 tests, OK |
 | Линт | `make lint` | чисто, 29 файлов |
-| Сборка пакета | `makepkg -f --nocheck` | `whisper-dictate-0.1.0-1-any.pkg.tar.zst` |
-| Окружение | `bin/whisper-dictate doctor` | все пункты `ok` |
+| Сборка пакета | `makepkg -f --nocheck` | `whisper-station-0.1.0-1-any.pkg.tar.zst` |
+| Окружение | `bin/whisper-station doctor` | все пункты `ok` |
 
 ## Критерии приёмки ТЗ
 
 | № | Проверка | Как | Результат |
 |---|---|---|---|
-| 1 | `transcribe sample.wav` | `bin/whisper-dictate transcribe …/Ru-привет.wav` | `Привет!`, код 0 |
+| 1 | `transcribe sample.wav` | `bin/whisper-station transcribe …/Ru-привет.wav` | `Привет!`, код 0 |
 | 2 | Запись → распознавание → вставка | хоткей `Meta+Alt+D`, звук в изолированный null-sink, тестовое Qt-окно | «Доброе утро!» в поле окна |
 | 3 | Хоткей из другого окна | синтетическое нажатие через `uinput` (как физическая клавиатура) | `recording`, HUD появился и исчез |
 | 4 | `Esc` — отмена | запись → `Esc` | состояние `idle`, в окно ничего не вставлено |
@@ -29,7 +29,7 @@ PySide6 6.12.0. Сервер Whisper: `large-v3-turbo`, CUDA float16, `127.0.0.1
 ## Что проверялось вживую
 
 - Регистрация в `org.kde.kglobalaccel`: `shortcutKeys` → `Meta+Alt+D`, запись
-  `[whisper-dictate] toggle=Meta+Alt+D,Диктовка` в `~/.config/kglobalshortcutsrc`.
+  `[whisper-station] toggle=Meta+Alt+D,Диктовка` в `~/.config/kglobalshortcutsrc`.
 - Нажатие `Meta+Alt+D` через `ydotool` (uinput) → сигнал `globalShortcutPressed` → запись.
 - Вставка: `wl-copy` + `ydotool key 29:1 47:1 47:0 29:0` в сфокусированное окно,
   кириллица без потерь; буфер восстановлен.
@@ -51,11 +51,11 @@ PySide6 6.12.0. Сервер Whisper: `large-v3-turbo`, CUDA float16, `127.0.0.1
 
 | Проверка | Команда | Результат |
 |---|---|---|
-| Установка | `sudo pacman -U whisper-dictate-0.1.0-1-any.pkg.tar.zst` | `whisper-dictate 0.1.0-1` |
-| Целостность | `pacman -Qk whisper-dictate` | 0 файлов не хватает |
-| Запуск установленной копии | `cd / && whisper-dictate daemon` | демон с `PYTHONPATH=/usr/lib/whisper-dictate`, хоткей активен |
+| Установка | `sudo pacman -U whisper-station-0.1.0-1-any.pkg.tar.zst` | `whisper-station 0.1.0-1` |
+| Целостность | `pacman -Qk whisper-station` | 0 файлов не хватает |
+| Запуск установленной копии | `cd / && whisper-station daemon` | демон с `PYTHONPATH=/usr/lib/whisper-station`, хоткей активен |
 | Трей | `RegisteredStatusNotifierItems` | иконка принадлежит процессу демона |
-| Автозапуск | `whisper-dictate autostart on` | `~/.config/autostart/whisper-dictate.desktop`, `desktop-file-validate` ок |
+| Автозапуск | `whisper-station autostart on` | `~/.config/autostart/whisper-station.desktop`, `desktop-file-validate` ок |
 
 По пути найдены и исправлены две ошибки упаковки: репозиторий с umask 600/700 ставился
 нечитаемым для пользователя (Python видел namespace-пакет), а `doctor` считал
@@ -69,7 +69,7 @@ PySide6 6.12.0. Сервер Whisper: `large-v3-turbo`, CUDA float16, `127.0.0.1
 | задержка распознавания | медиана 610 мс (последние 10: min 496, max 867) |
 | сбои | 4; три — до исправлений (16:08 хоткей, 16:36/16:43 `parec`), один транзиентный: 19:40 `pw-record` упал с кодом 1 и следующий старт через 2 с прошёл |
 | сервер | cuda; после 30 мин простоя сервер DSH вышел, приложение подняло свой через `run.sh` |
-| схема архитектуры | `.archify/architecture-whisper-dictate-20261107-194924/` — гейты `validate`/`deliver`/`check`/`browser-check` пройдены |
+| схема архитектуры | `.archify/architecture-whisper-station-20261107-194924/` — гейты `validate`/`deliver`/`check`/`browser-check` пройдены |
 
 ## Вставка в терминал (2026-11-08)
 
