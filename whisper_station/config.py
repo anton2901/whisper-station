@@ -80,7 +80,7 @@ COMMENTS = {
         "max_seconds": "защитный предел длительности записи",
     },
     "preview": {
-        "live": "живой предпросмотр распознавания в HUD (эксперимент)",
+        "live": "живой предпросмотр распознавания в HUD",
     },
     "ui": {
         "beep": "звуковой сигнал старта и остановки",
@@ -98,7 +98,7 @@ class Config:
 
     hotkey: str = DEFAULT_HOTKEY
     hotkey_mode: str = "toggle"
-    preview_live: bool = False
+    preview_live: bool = True
     language: str = "ru"
     server_url: str = "http://127.0.0.1:8765"
     server_command: str = ""

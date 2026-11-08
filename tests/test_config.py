@@ -98,7 +98,7 @@ class ConfigDefaultsTest(unittest.TestCase):
         self.assertEqual(cfg.hotkey, "Alt+M")
 
     def test_preview_live_default_and_parsing(self) -> None:
-        self.assertFalse(cfgmod.Config().preview_live)
+        self.assertTrue(cfgmod.Config().preview_live)
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.toml"
             path.write_text("[preview]\nlive = true\n", encoding="utf-8")

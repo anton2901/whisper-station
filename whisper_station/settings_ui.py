@@ -106,7 +106,7 @@ class SettingsDialog(QDialog):
         self._max_seconds.setValue(int(cfg.max_seconds))
 
         self._beep = QCheckBox("Звуковой сигнал старта и остановки", self)
-        self._preview_live = QCheckBox("Живой предпросмотр распознавания в HUD (эксперимент)", self)
+        self._preview_live = QCheckBox("Живой предпросмотр распознавания в HUD", self)
         self._preview_live.setChecked(cfg.preview_live)
         self._beep.setChecked(cfg.beep)
         self._show_hud = QCheckBox("Показывать HUD во время записи", self)
