@@ -97,6 +97,13 @@ class ConfigDefaultsTest(unittest.TestCase):
                 self.assertTrue(new_file.is_file())
         self.assertEqual(cfg.hotkey, "Alt+M")
 
+    def test_preview_live_default_and_parsing(self) -> None:
+        self.assertFalse(cfgmod.Config().preview_live)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text("[preview]\nlive = true\n", encoding="utf-8")
+            self.assertTrue(cfgmod.load(path).preview_live)
+
     def test_hotkey_mode_default_and_validation(self) -> None:
         self.assertEqual(cfgmod.Config().hotkey_mode, "toggle")
         with tempfile.TemporaryDirectory() as tmp:

@@ -8,6 +8,7 @@ import threading
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
 
 from . import sounds
+from .preview import Preview
 from .config import Config
 from .inject import inject_text
 from .recorder import Recorder, RecorderError, normalize_pcm, wav_duration, wav_peak
@@ -36,6 +37,7 @@ class Controller(QObject):
     wave_changed = Signal(object)  # полосы осциллограммы (min, max)
     server_status = Signal(object)
     notify_requested = Signal(str, str, str)  # заголовок, текст, важность
+    preview_text = Signal(str)  # живой предпросмотр для HUD
 
     _server_ready = Signal(object)
     _server_failed = Signal(str)
@@ -52,6 +54,8 @@ class Controller(QObject):
         self._generation = 0
         self._last_peak = 1.0
         self._last_text = ""
+        self._preview = Preview(self.cfg, self)
+        self._preview.text_ready.connect(self.preview_text.emit)
         self._restarts = 0
         self._max_timer = QTimer(self)
         self._max_timer.setSingleShot(True)
@@ -105,6 +109,7 @@ class Controller(QObject):
         self.stop()
 
     def stop(self) -> None:
+        self._preview.end()
         if self.state != RECORDING:
             return
         self._max_timer.stop()
@@ -168,6 +173,7 @@ class Controller(QObject):
         ).start()
 
     def cancel(self) -> None:
+        self._preview.end()
         self._generation += 1
         self._max_timer.stop()
         recorder, self._recorder = self._recorder, None
@@ -222,6 +228,9 @@ class Controller(QObject):
         self._recorder = recorder
         self._max_timer.start(int(self.cfg.max_seconds * 1000))
         self._set_state(RECORDING)
+        self._preview.cfg = self.cfg
+        if self.cfg.preview_live:
+            self._preview.begin(recorder)
         self._restarts = 0
         if self.cfg.beep:
             sounds.play("start")
@@ -291,6 +300,7 @@ class Controller(QObject):
         self.notify_requested.emit("Текст в буфере обмена", result.detail, "normal")
 
     def _on_error(self, message: str) -> None:
+        self._preview.end()
         if self._hud is not None:
             self._hud.finish()
         self._set_state(IDLE)

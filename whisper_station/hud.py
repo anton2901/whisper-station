@@ -68,6 +68,7 @@ class Hud(QWidget):
         self.setFixedSize(WIDTH, HEIGHT)
 
         self._state = "idle"
+        self._preview_text = ""
         self._bands: deque[tuple[float, float]] = deque(maxlen=WAVE_BARS)
         self._elapsed = QElapsedTimer()
         self._tick = QTimer(self)
@@ -98,8 +99,14 @@ class Hud(QWidget):
     def state(self) -> str:
         return self._state
 
+    def set_preview(self, text: str) -> None:
+        """Показать живой предпросмотр распознавания (эксперимент)."""
+        self._preview_text = text.strip()
+        self.update()
+
     def begin_recording(self) -> None:
         self._state = "recording"
+        self._preview_text = ""
         self._bands.clear()
         self._elapsed.restart()
         self._tick.start()
@@ -113,6 +120,8 @@ class Hud(QWidget):
     def finish(self) -> None:
         self._tick.stop()
         self._state = "idle"
+        self._preview_text = ""
+        self._preview_text = ""
         self._bands.clear()
         self.hide()
 
@@ -219,8 +228,17 @@ class Hud(QWidget):
         label_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 1.4)
         painter.setFont(label_font)
         painter.setPen(MUTED)
-        label = "Распознаю…" if self._state == "transcribing" else "WHISPER STATION"
-        painter.drawText(30, HEIGHT - 10, label)
+        if self._preview_text:
+            painter.setPen(ACCENT)
+            metrics = painter.fontMetrics()
+            text = metrics.elidedText(
+                self._preview_text, Qt.TextElideMode.ElideRight, WIDTH - 200
+            )
+            painter.drawText(30, HEIGHT - 10, text)
+        else:
+            label = "Распознаю…" if self._state == "transcribing" else "WHISPER STATION"
+            painter.setPen(MUTED)
+            painter.drawText(30, HEIGHT - 10, label)
 
 
     def _paint_wave(self, painter: QPainter, wave: QRectF) -> None:

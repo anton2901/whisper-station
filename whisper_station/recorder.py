@@ -84,6 +84,13 @@ class Recorder:
     def running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
 
+    def snapshot(self, max_seconds: float = 20.0) -> bytes:
+        """Последние N секунд сырого PCM — для живого предпросмотра."""
+        limit = int(max_seconds * SAMPLE_RATE * SAMPLE_WIDTH)
+        with self._lock:
+            data = bytes(self._buffer)
+        return data[-limit:] if limit > 0 else data
+
     @property
     def bytes_captured(self) -> int:
         with self._lock:

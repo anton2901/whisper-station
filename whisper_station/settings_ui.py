@@ -106,6 +106,8 @@ class SettingsDialog(QDialog):
         self._max_seconds.setValue(int(cfg.max_seconds))
 
         self._beep = QCheckBox("Звуковой сигнал старта и остановки", self)
+        self._preview_live = QCheckBox("Живой предпросмотр распознавания в HUD (эксперимент)", self)
+        self._preview_live.setChecked(cfg.preview_live)
         self._beep.setChecked(cfg.beep)
         self._show_hud = QCheckBox("Показывать HUD во время записи", self)
         self._show_hud.setChecked(cfg.show_hud)
@@ -191,7 +193,13 @@ class SettingsDialog(QDialog):
     def _misc_group(self) -> QGroupBox:
         box = QGroupBox("Прочее", self)
         layout = QVBoxLayout(box)
-        for widget in (self._beep, self._show_hud, self._hud_pin_top, self._autostart):
+        for widget in (
+            self._beep,
+            self._show_hud,
+            self._hud_pin_top,
+            self._autostart,
+            self._preview_live,
+        ):
             layout.addWidget(widget)
         return box
 
@@ -234,6 +242,7 @@ class SettingsDialog(QDialog):
             min_seconds=float(self._min_seconds.value()),
             max_seconds=float(self._max_seconds.value()),
             beep=self._beep.isChecked(),
+            preview_live=self._preview_live.isChecked(),
             show_hud=self._show_hud.isChecked(),
             hud_pin_top=self._hud_pin_top.isChecked(),
             autostart=self._autostart.isChecked(),

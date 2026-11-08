@@ -28,6 +28,7 @@ LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 # Секция TOML -> {ключ в файле: поле Config}. Порядок важен для записи.
 SECTIONS: dict[str, dict[str, str]] = {
     "hotkey": {"toggle": "hotkey", "mode": "hotkey_mode"},
+    "preview": {"live": "preview_live"},
     "transcribe": {
         "language": "language",
         "server_url": "server_url",
@@ -78,6 +79,9 @@ COMMENTS = {
         "min_seconds": "записи короче — не отправлять на распознавание",
         "max_seconds": "защитный предел длительности записи",
     },
+    "preview": {
+        "live": "живой предпросмотр распознавания в HUD (эксперимент)",
+    },
     "ui": {
         "beep": "звуковой сигнал старта и остановки",
         "show_hud": "показывать HUD во время записи",
@@ -94,6 +98,7 @@ class Config:
 
     hotkey: str = DEFAULT_HOTKEY
     hotkey_mode: str = "toggle"
+    preview_live: bool = False
     language: str = "ru"
     server_url: str = "http://127.0.0.1:8765"
     server_command: str = ""
