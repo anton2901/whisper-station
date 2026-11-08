@@ -21,8 +21,8 @@ from .stt import SttError, transcribe
 
 log = logging.getLogger(__name__)
 
-INTERVAL_MS = 1500
-MAX_SECONDS = 20.0
+INTERVAL_MS = 1200
+MAX_SECONDS = 15.0
 TIMEOUT = 20.0
 
 
@@ -36,6 +36,7 @@ class Preview(QObject):
         self.cfg = cfg
         self._recorder: Recorder | None = None
         self._busy = False
+        self._text = ""
         self._timer = QTimer(self)
         self._timer.setInterval(INTERVAL_MS)
         self._timer.timeout.connect(self._tick)
@@ -47,10 +48,12 @@ class Preview(QObject):
     def begin(self, recorder: Recorder) -> None:
         self._recorder = recorder
         self._busy = False
+        self._text = ""
         self._timer.start()
 
     def end(self) -> None:
         self._timer.stop()
+        self._text = ""
         self._recorder = None
         self._busy = False
 
@@ -62,6 +65,7 @@ class Preview(QObject):
             return
         self._busy = True
         pcm = recorder.snapshot(MAX_SECONDS)
+        log.debug("preview: запрос, %.1f с аудио", len(pcm) / 2 / 16000)
         threading.Thread(target=self._work, args=(pcm,), daemon=True).start()
 
     def _work(self, pcm: bytes) -> None:
@@ -70,7 +74,10 @@ class Preview(QObject):
                 pcm_to_wav(pcm), self.cfg, timeout=TIMEOUT, retries=0
             )
             text = result.text.strip()
-            if text:
+            # Отбрасываем только «обрезанный» ответ (он — префикс прежнего):
+            # так строка не прыгает назад, но и не замирает на устаревшем тексте.
+            if text and not (self._text and self._text.startswith(text)):
+                self._text = text
                 self.text_ready.emit(text)
         except SttError as exc:
             log.debug("preview: %s", exc)

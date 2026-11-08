@@ -232,7 +232,7 @@ class Hud(QWidget):
             painter.setPen(ACCENT)
             metrics = painter.fontMetrics()
             text = metrics.elidedText(
-                self._preview_text, Qt.TextElideMode.ElideRight, WIDTH - 200
+                self._preview_text, Qt.TextElideMode.ElideLeft, WIDTH - 200
             )
             painter.drawText(30, HEIGHT - 10, text)
         else:
