@@ -33,7 +33,7 @@ make doctor      # проверка окружения: хоткей, встав
 
 ```sh
 makepkg -f                       # собрать (зависимости должны стоять)
-sudo pacman -U whisper-station-0.1.0-1-any.pkg.tar.zst
+sudo pacman -U whisper-station-*.pkg.tar.zst
 ```
 
 Пакет кладёт код в `/usr/lib/whisper-station`, обёртку — в `/usr/bin/whisper-station`,
