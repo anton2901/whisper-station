@@ -26,6 +26,28 @@ class FakeRecorder:
         return b"\x00\x00" * 100
 
 
+class MergeTest(unittest.TestCase):
+    def test_extends(self) -> None:
+        self.assertEqual(preview_module.merge_text("привет", "привет как дела"), "привет как дела")
+
+    def test_overlap_words(self) -> None:
+        self.assertEqual(
+            preview_module.merge_text("раз два три", "три четыре пять"),
+            "раз два три четыре пять",
+        )
+
+    def test_short_noise_keeps_previous(self) -> None:
+        self.assertEqual(
+            preview_module.merge_text("раз два три четыре", "да"), "раз два три четыре"
+        )
+
+    def test_empty_keeps_previous(self) -> None:
+        self.assertEqual(preview_module.merge_text("текст", ""), "текст")
+
+    def test_regression_keeps_longer(self) -> None:
+        self.assertEqual(preview_module.merge_text("раз два три", "раз два"), "раз два три")
+
+
 class PreviewTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:

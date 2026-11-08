@@ -109,10 +109,22 @@ class Hud(QWidget):
     def set_preview(self, text: str) -> None:
         """Показать живой предпросмотр распознавания (эксперимент)."""
         text = text.strip()
-        if text and not self._preview_text:
-            self._scroll_offset = 0.0
+        if not text:
+            return
+        grew = bool(self._preview_text) and text.startswith(self._preview_text)
         self._preview_text = text
+        if not grew:
+            # Новая строка: сразу встаём на хвост, без отката к началу.
+            self._scroll_offset = self._tail_offset()
         self.update()
+
+    def _tail_offset(self) -> float:
+        if not self._preview_text:
+            return 0.0
+        metrics = QFontMetrics(self._preview_font())
+        full = metrics.horizontalAdvance(self._preview_text)
+        available = WIDTH - PREVIEW_RIGHT_PAD - PREVIEW_LEFT
+        return min(0.0, available - full)
 
     def _preview_font(self) -> QFont:
         font = QFont("monospace")
@@ -125,10 +137,7 @@ class Hud(QWidget):
         """Плавно уводить строку влево, пока виден не весь текст."""
         if not self._preview_text:
             return
-        metrics = QFontMetrics(self._preview_font())
-        full = metrics.horizontalAdvance(self._preview_text)
-        available = WIDTH - PREVIEW_RIGHT_PAD - PREVIEW_LEFT
-        target = min(0.0, available - full)
+        target = self._tail_offset()
         if self._scroll_offset > target:
             self._scroll_offset = max(target, self._scroll_offset - PREVIEW_SCROLL_SPEED)
             self.update()

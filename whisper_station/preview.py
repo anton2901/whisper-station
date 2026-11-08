@@ -26,6 +26,37 @@ MAX_SECONDS = 8.0
 TIMEOUT = 20.0
 
 
+def _words(items: list[str]) -> list[str]:
+    return [item.strip(".,!?;:—-\"'«»()").lower() for item in items]
+
+
+def merge_text(previous: str, fresh: str) -> str:
+    """Склеить новый фрагмент с накопленным по перекрытию слов.
+
+    Окно предпросмотра скользит, поэтому каждый ответ начинается не с начала
+    фразы. Ищем максимальное перекрытие «хвост старого == начало нового» и
+    дописываем только новую часть. Без перекрытия: короткий ответ считаем
+    артефактом тишины и оставляем прежний текст (строка застывает).
+    """
+    fresh = fresh.strip()
+    if not fresh:
+        return previous
+    if not previous:
+        return fresh
+    if fresh.startswith(previous):
+        return fresh
+    if previous.startswith(fresh):
+        return previous
+    old_words, new_words = previous.split(), fresh.split()
+    limit = min(len(old_words), len(new_words))
+    for size in range(limit, 0, -1):
+        if _words(old_words[-size:]) == _words(new_words[:size]):
+            return " ".join(old_words + new_words[size:])
+    if len(new_words) * 2 < len(old_words):
+        return previous
+    return fresh
+
+
 class Preview(QObject):
     """Периодическое распознавание накопленного аудио — только для HUD."""
 
@@ -73,12 +104,10 @@ class Preview(QObject):
             result = transcribe(
                 pcm_to_wav(pcm), self.cfg, timeout=TIMEOUT, retries=0
             )
-            text = result.text.strip()
-            # Отбрасываем только «обрезанный» ответ (он — префикс прежнего):
-            # так строка не прыгает назад, но и не замирает на устаревшем тексте.
-            if text and not (self._text and self._text.startswith(text)):
-                self._text = text
-                self.text_ready.emit(text)
+            merged = merge_text(self._text, result.text)
+            if merged and merged != self._text:
+                self._text = merged
+                self.text_ready.emit(merged)
         except SttError as exc:
             log.debug("preview: %s", exc)
         except Exception:  # noqa: BLE001 - предпросмотр не должен ломать запись
