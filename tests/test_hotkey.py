@@ -54,6 +54,25 @@ class FirstKeyTest(unittest.TestCase):
         self.assertIsNone(_first_key("ерунда"))
 
 
+class MatchTest(unittest.TestCase):
+    def setUp(self) -> None:
+        from whisper_station.hotkey import GlobalHotkey
+
+        self.hk = GlobalHotkey(lambda: None)
+
+    def test_accepts_own_component(self) -> None:
+        self.assertTrue(self.hk._match(("whisper-station", "toggle", 1)))
+
+    def test_accepts_legacy_component(self) -> None:
+        self.assertTrue(self.hk._match(("whisper-dictate", "toggle", 1)))
+
+    def test_rejects_foreign_component(self) -> None:
+        self.assertFalse(self.hk._match(("kwin", "toggle", 1)))
+
+    def test_rejects_other_action(self) -> None:
+        self.assertFalse(self.hk._match(("whisper-station", "other", 1)))
+
+
 class GlobalHotkeyTest(unittest.TestCase):
     def test_bad_sequence_raises_and_stops(self) -> None:
         hotkey = GlobalHotkey(lambda: None)

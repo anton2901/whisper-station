@@ -27,8 +27,8 @@ HUD_TITLE = "Whisper Station HUD"
 RULE_ID = 991001
 CONFIG_NAME = "kwinrulesrc"
 
-HUD_WIDTH = 300   # должно совпадать с hud.WIDTH
-HUD_HEIGHT = 68   # должно совпадать с hud.HEIGHT
+HUD_WIDTH = 480   # должно совпадать с hud.WIDTH
+HUD_HEIGHT = 64   # должно совпадать с hud.HEIGHT
 MARGIN_TOP = 72   # ниже верхней панели Plasma, чтобы не срабатывало автоскрытие
 
 RULE_KEYS = (

@@ -35,6 +35,11 @@ NO_AUTOLOADING = 0x4
 
 DEBOUNCE_SECONDS = 0.15
 
+# Компонент под прежним именем: KWin держит регистрацию мёртвого приложения до
+# перезапуска сессии и шлёт события именно от него. После перезагрузки запись
+# исчезает, но совместимость оставляем — она ничего не стоит.
+LEGACY_COMPONENTS = ("whisper-dictate",)
+
 
 class HotkeyError(RuntimeError):
     """Хоткей зарегистрировать не удалось."""
@@ -220,7 +225,10 @@ class GlobalHotkey:
         if len(args) >= 2:
             component = args[0] if len(args) > 2 else None
             action = args[1] if len(args) > 2 else args[0]
-            if component is not None and str(component) != self.action_id.component:
+            if component is not None and str(component) not in (
+                self.action_id.component,
+                *LEGACY_COMPONENTS,
+            ):
                 return False
             return str(action) == self.action_id.action
         return True

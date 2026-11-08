@@ -78,6 +78,10 @@ def app_icon() -> QIcon:
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    # Поля по краям: в меню приложений иконку иначе обрезает собственный маска-скругление.
+    painter.translate(size / 2, size / 2)
+    painter.scale(0.84, 0.84)
+    painter.translate(-size / 2, -size / 2)
 
     gradient = QLinearGradient(0, 0, 0, size)
     gradient.setColorAt(0.0, QColor("#101a2e"))
