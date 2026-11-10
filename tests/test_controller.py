@@ -9,6 +9,7 @@ from PySide6.QtCore import QCoreApplication
 
 from whisper_station.config import Config
 from whisper_station.controller import MIN_HOLD_SECONDS, Controller
+from whisper_station.stt import Transcript
 from whisper_station import controller as controller_module
 
 
@@ -117,6 +118,34 @@ class RetryTest(unittest.TestCase):
         self.controller._check_recorder_started()
         self.assertEqual(self.controller._restarts, 0)
         self.assertIs(self.controller._recorder, recorder)
+
+
+class TextProcessingTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.app = QCoreApplication.instance() or QCoreApplication([])
+
+    def test_transcription_is_processed_before_signal(self) -> None:
+        cfg = Config(dictionary_words=("кубернетес",))
+        ctrl = Controller(cfg, FakeServer())
+        received: list[tuple] = []
+        ctrl._transcribed.connect(lambda text, ms: received.append((text, ms)))
+        transcript = Transcript(text="Ээ, кубернетис я я я", elapsed_ms=12)
+        with mock.patch.object(controller_module, "wav_duration", return_value=5.0):
+            with mock.patch.object(controller_module, "transcribe", return_value=transcript):
+                ctrl._run_transcription(b"wav", ctrl._generation)
+        self.assertEqual(received, [("Кубернетес я", 12)])
+
+    def test_broken_text_processing_falls_back_to_raw(self) -> None:
+        ctrl = Controller(Config(), FakeServer())
+        received: list[tuple] = []
+        ctrl._transcribed.connect(lambda text, ms: received.append((text, ms)))
+        transcript = Transcript(text="как есть", elapsed_ms=7)
+        with mock.patch.object(controller_module, "wav_duration", return_value=5.0):
+            with mock.patch.object(controller_module, "transcribe", return_value=transcript):
+                with mock.patch.object(controller_module, "process_text", side_effect=RuntimeError):
+                    ctrl._run_transcription(b"wav", ctrl._generation)
+        self.assertEqual(received, [("как есть", 7)])
 
 
 class RepasteTest(unittest.TestCase):

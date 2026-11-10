@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tempfile
+import tomllib
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -139,6 +140,91 @@ class ConfigDefaultsTest(unittest.TestCase):
         changed = base.with_changes(language="en")
         self.assertEqual(base.language, "ru")
         self.assertEqual(changed.language, "en")
+
+
+class DictionaryConfigTest(unittest.TestCase):
+    def test_defaults(self) -> None:
+        cfg = cfgmod.Config()
+        self.assertEqual(cfg.dictionary_words, ())
+        self.assertAlmostEqual(cfg.dictionary_threshold, 0.18)
+        self.assertTrue(cfg.remove_fillers)
+        self.assertTrue(cfg.collapse_stutters)
+        self.assertFalse(cfg.trailing_space)
+        self.assertEqual(cfg.fillers, ())
+
+    def test_roundtrip_lists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            original = cfgmod.Config(
+                dictionary_words=("Kubernetes", "в общем", 'say "hi"'),
+                dictionary_threshold=0.3,
+                remove_fillers=False,
+                collapse_stutters=False,
+                trailing_space=True,
+                fillers=("ну", "вот"),
+            )
+            cfgmod.save(original, path)
+            raw = tomllib.loads(path.read_text(encoding="utf-8"))
+            loaded = cfgmod.load(path)
+        self.assertEqual(raw["dictionary"]["words"], ["Kubernetes", "в общем", 'say "hi"'])
+        self.assertEqual(loaded.dictionary_words, original.dictionary_words)
+        self.assertEqual(loaded.fillers, ("ну", "вот"))
+        self.assertAlmostEqual(loaded.dictionary_threshold, 0.3)
+        self.assertFalse(loaded.remove_fillers)
+        self.assertFalse(loaded.collapse_stutters)
+        self.assertTrue(loaded.trailing_space)
+
+    def test_cleans_words(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text(
+                '[dictionary]\nwords = ["  Kubernetes  ", "", "kubernetes", "Docker"]\n',
+                encoding="utf-8",
+            )
+            cfg = cfgmod.load(path)
+        self.assertEqual(cfg.dictionary_words, ("Kubernetes", "Docker"))
+
+    def test_skips_non_string_items(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text("[dictionary]\nwords = [42, \"ok\", true]\n", encoding="utf-8")
+            cfg = cfgmod.load(path)
+        self.assertEqual(cfg.dictionary_words, ("ok",))
+
+    def test_non_list_words_fall_back(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text('[dictionary]\nwords = "Kubernetes"\n', encoding="utf-8")
+            cfg = cfgmod.load(path)
+        self.assertEqual(cfg.dictionary_words, ())
+
+    def test_long_word_is_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            long_word = "x" * (cfgmod.MAX_WORD_LENGTH + 1)
+            path.write_text(f'[dictionary]\nwords = ["{long_word}", "ok"]\n', encoding="utf-8")
+            cfg = cfgmod.load(path)
+        self.assertEqual(cfg.dictionary_words, ("ok",))
+
+    def test_threshold_out_of_range_falls_back(self) -> None:
+        for bad in ("5", "-1", "nan"):
+            with self.subTest(bad=bad), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "config.toml"
+                path.write_text(f"[dictionary]\nthreshold = {bad}\n", encoding="utf-8")
+                cfg = cfgmod.load(path)
+                self.assertAlmostEqual(cfg.dictionary_threshold, 0.18)
+
+    def test_zero_threshold_is_allowed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text("[dictionary]\nthreshold = 0\n", encoding="utf-8")
+            self.assertAlmostEqual(cfgmod.load(path).dictionary_threshold, 0.0)
+
+    def test_dumps_is_valid_toml(self) -> None:
+        text = cfgmod.dumps(cfgmod.Config(dictionary_words=("a", "b")))
+        parsed = tomllib.loads(text)
+        self.assertEqual(parsed["dictionary"]["words"], ["a", "b"])
+        self.assertEqual(parsed["text"]["trailing_space"], False)
 
 
 if __name__ == "__main__":

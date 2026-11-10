@@ -67,6 +67,14 @@ whisper-station autostart on       # автозапуск при входе
 бегущей строкой показывается в HUD, но в окно попадает только после остановки.
 Выключить — галочка в настройках или `[preview] live = false`.
 
+Словарь и чистка текста: в настройках → «Словарь и текст» добавьте свои термины и
+имена — похожие слова исправляются после распознавания (нечёткое совпадение,
+порог 0.18). Там же убираются филлеры «ээ/ммм/uh/hmm», схлопываются повторы
+«я я я» и включается пробел в конце вставки. Сервер Whisper подсказки не принимает,
+поэтому словарь — пост-коррекция. В конфиге: `[dictionary] words = [...]`,
+`threshold = 0.18`; `[text] remove_fillers`, `collapse_stutters`, `trailing_space`,
+`fillers` (свой список заменяет встроенный).
+
 В терминалах вставка — **Ctrl+Shift+V**, а не Ctrl+V: переключите «Сочетание вставки»
 в настройках, когда диктуете в консоль. Буфер по умолчанию **не восстанавливается**,
 поэтому если вставка не сработала, продиктованный текст остаётся в буфере — его можно
@@ -79,7 +87,7 @@ whisper-station autostart on       # автозапуск при входе
 
 `~/.config/whisper-station/config.toml` или окно «Настройки…» в трее: хоткей, язык,
 адрес и команда сервера, способ вставки (`paste`/`type`/`clipboard`), восстановление
-буфера, автозапуск, звуковой сигнал, длительности записи.
+буфера, словарь терминов и чистка текста, автозапуск, звуковой сигнал, длительности записи.
 
 Хоткей также виден в System Settings → Shortcuts → Whisper Station: менять можно там.
 Резервный вариант для любой сессии — назначить сочетание на команду `whisper-station toggle`.
@@ -128,7 +136,7 @@ rm -rf ~/.config/whisper-station ~/.local/state/whisper-station
 
 Лицензия: **GNU GPL v3** (`LICENSE`).
 
-Архитектура и решения — `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, проверки — `docs/VERIFICATION.md`.
+Архитектура и решения — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DECISIONS.md](docs/DECISIONS.md), проверки — [docs/VERIFICATION.md](docs/VERIFICATION.md), план — [docs/ROADMAP.md](docs/ROADMAP.md), разбор Handy — [docs/HANDY-ANALYSIS.md](docs/HANDY-ANALYSIS.md).
 
 Схема архитектуры (интерактивный HTML, генерируется Archify из `candidate.json`):
 `.archify/architecture-whisper-station-20261107-194924/whisper-station.html`.

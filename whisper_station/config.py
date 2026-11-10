@@ -21,6 +21,10 @@ DEFAULT_HOTKEY = "Meta+Alt+D"
 # Потолок записи: 30 минут. Сервер принимает до 64 МБ (~34 мин PCM16 16 кГц),
 # а в памяти это ~58 МБ — с запасом.
 MAX_RECORD_SECONDS = 1800.0
+# Словарь — пост-коррекция текста, поэтому список не может быть произвольным:
+# ограничиваем число терминов и их длину, чтобы вставка оставалась быстрой.
+MAX_DICTIONARY_WORDS = 200
+MAX_WORD_LENGTH = 64
 INSERT_MODES = ("paste", "type", "clipboard")
 PASTE_SHORTCUTS = ("ctrl+v", "ctrl+shift+v")
 HOTKEY_MODES = ("toggle", "press")
@@ -43,6 +47,16 @@ SECTIONS: dict[str, dict[str, str]] = {
         "restore_clipboard": "restore_clipboard",
         "restore_delay_ms": "restore_delay_ms",
         "paste_shortcut": "paste_shortcut",
+    },
+    "dictionary": {
+        "words": "dictionary_words",
+        "threshold": "dictionary_threshold",
+    },
+    "text": {
+        "remove_fillers": "remove_fillers",
+        "collapse_stutters": "collapse_stutters",
+        "trailing_space": "trailing_space",
+        "fillers": "fillers",
     },
     "audio": {
         "backend": "audio_backend",
@@ -75,6 +89,16 @@ COMMENTS = {
         "restore_clipboard": "вернуть прежнее содержимое буфера после вставки",
         "restore_delay_ms": "задержка перед восстановлением буфера, мс (Wayland отдаёт данные асинхронно)",
         "paste_shortcut": "ctrl+v для обычных окон, ctrl+shift+v для терминалов",
+    },
+    "dictionary": {
+        "words": 'свои термины и имена: ["Kubernetes", "ChargeBee"] — исправляются после распознавания',
+        "threshold": "допустимое расхождение при нечётком совпадении, 0…1 (0 — только точные)",
+    },
+    "text": {
+        "remove_fillers": "убирать «ээ», «ммм», «uh», «hmm» из готового текста",
+        "collapse_stutters": "схлопывать повторы «я я я» в одно слово",
+        "trailing_space": "добавлять пробел в конце — чтобы диктовки не слипались",
+        "fillers": "свой список филлеров; пусто — встроенный",
     },
     "audio": {
         "backend": "auto, parec или pw-record",
@@ -110,6 +134,12 @@ class Config:
     restore_clipboard: bool = False
     restore_delay_ms: int = 1500
     paste_shortcut: str = "ctrl+v"
+    dictionary_words: tuple[str, ...] = ()
+    dictionary_threshold: float = 0.18
+    remove_fillers: bool = True
+    collapse_stutters: bool = True
+    trailing_space: bool = False
+    fillers: tuple[str, ...] = ()
     audio_backend: str = "auto"
     audio_device: str = "@DEFAULT_SOURCE@"
     min_seconds: float = 0.35
@@ -139,6 +169,15 @@ def _coerce(value: Any, default: Any, key: str) -> Any:
         if isinstance(default, bool):
             if isinstance(value, bool):
                 return value
+        elif isinstance(default, tuple):
+            if isinstance(value, list):
+                items = [item for item in value if isinstance(item, str)]
+                if len(items) != len(value):
+                    log.warning(
+                        "config: в %s не только строки, нестроковые значения пропущены",
+                        key,
+                    )
+                return tuple(items)
         elif isinstance(default, int):
             if isinstance(value, bool):
                 raise TypeError
@@ -156,8 +195,47 @@ def _coerce(value: Any, default: Any, key: str) -> Any:
     return default
 
 
+def _clean_words(
+    words: tuple[str, ...],
+    label: str,
+    *,
+    limit: int = MAX_DICTIONARY_WORDS,
+) -> tuple[str, ...]:
+    """Обрезать пробелы, убрать пустые и одинаковые (без учёта регистра) слова."""
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for raw in words:
+        word = " ".join(str(raw).split()).strip()
+        if not word:
+            continue
+        if len(word) > MAX_WORD_LENGTH:
+            log.warning("config: %s: слово длиннее %d символов пропущено", label, MAX_WORD_LENGTH)
+            continue
+        key = word.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(word)
+        if len(cleaned) >= limit:
+            log.warning("config: %s: больше %d слов, остальные пропущены", label, limit)
+            break
+    return tuple(cleaned)
+
+
 def _validate(cfg: Config) -> Config:
     changes: dict[str, Any] = {}
+
+    words = _clean_words(cfg.dictionary_words, "dictionary.words")
+    if words != cfg.dictionary_words:
+        changes["dictionary_words"] = words
+    fillers = _clean_words(cfg.fillers, "text.fillers", limit=100)
+    if fillers != cfg.fillers:
+        changes["fillers"] = fillers
+    if not 0.0 <= cfg.dictionary_threshold <= 1.0:
+        log.warning(
+            "config: порог словаря %.2f вне 0…1, беру 0.18", cfg.dictionary_threshold
+        )
+        changes["dictionary_threshold"] = 0.18
 
     if cfg.hotkey_mode not in HOTKEY_MODES:
         log.warning("config: неизвестный режим хоткея %r, беру toggle", cfg.hotkey_mode)
@@ -235,6 +313,8 @@ def load(path: Path | None = None) -> Config:
 def _toml_value(value: Any) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, (list, tuple)):
+        return "[" + ", ".join(_toml_value(item) for item in value) + "]"
     if isinstance(value, (int, float)):
         return repr(value)
     text = str(value).replace("\\", "\\\\").replace('"', '\\"')

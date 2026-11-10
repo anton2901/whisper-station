@@ -14,6 +14,7 @@ Whisper на `127.0.0.1:8765`, буфер обмена, вставка чере�
 | `controller.py` | состояния: idle → starting → recording → transcribing → idle | не трогает Qt-виджеты напрямую |
 | `recorder.py` | `pw-record`/`parec` → WAV 16 кГц моно PCM16, полосы осциллограммы | один процесс записи за раз |
 | `stt.py` | multipart-запрос к `/v1/audio/transcriptions`, таймауты, ретрай | только loopback |
+| `textproc.py` | пост-коррекция: словарь терминов, филлеры, повторы, пробелы | чистые функции, без Qt |
 | `inject.py` | буфер `wl-copy`/`wl-paste`, Ctrl+V через `ydotool`, свой `ydotoold` | не меняет права в системе |
 | `hotkey.py` | регистрация в `org.kde.kglobalaccel`, поток `dbus-python` | одна комбинация на действие |
 | `service.py` | `/health`, запуск `run.sh`, остановка только своего сервера | чужой процесс не трогает |
@@ -27,18 +28,24 @@ Whisper на `127.0.0.1:8765`, буфер обмена, вставка чере�
 hotkey ──► controller.start ──► service.ensure (сервер) ──► recorder.start
                                                               │ parec
 HUD ◄── wave_changed (полосы min/max) ◄───────────────────────┘
-hotkey ──► controller.stop ──► recorder.stop (WAV) ──► stt.transcribe ──► inject_text
-                                                                          │ wl-copy
-                                                                          │ ydotool Ctrl+V
-                                                                          ▼
-                                                                   активное окно
+hotkey ──► controller.stop ──► recorder.stop (WAV) ──► stt.transcribe
+                                                             │ текст
+                                                             ▼
+                                                   textproc.process_text
+                                                   (словарь → филлеры → повторы
+                                                    → пробелы → хвостовой пробел)
+                                                             │
+                                                             ▼
+                                                   inject_text ──► активное окно
+                                                     │ wl-copy
+                                                     │ ydotool Ctrl+V
 ```
 
 ## Потоки
 
 - **Главный (Qt)** — виджеты, меню, IPC, запуск/остановка записи.
 - **Чтение аудио** — `recorder` читает stdout процесса и считает уровень.
-- **Распознавание** — HTTP-запрос, результат возвращается сигналом в главный поток.
+- **Распознавание** — HTTP-запрос и чистка текста (`textproc`), результат возвращается сигналом в главный поток.
 - **DBus (GLib)** — регистрация хоткея и приём активации.
 - **Восстановление буфера** — таймер на 1.5 с после вставки, с проверкой содержимого.
 
@@ -46,6 +53,7 @@ hotkey ──► controller.stop ──► recorder.stop (WAV) ──► stt.tra
 
 - Никаких сетевых адресов, кроме `127.0.0.1`/`localhost` (`config.is_loopback_url`).
 - `.whisper-local/**` только читаем: `run.sh`, модель, `prompt.txt`.
+- Сервер не принимает `prompt`/`hotwords`: имена и термины правит `textproc.py` уже после распознавания.
 - Сервер: если порт занят — используем; если нет — поднимаем свой и гасим при выходе;
   чужой не убиваем никогда.
 - Аудио на диск не пишется (только в памяти), кроме отладочного режима.

@@ -128,6 +128,7 @@ def cmd_status(cfg: Config) -> int:
 def cmd_doctor(cfg: Config) -> int:
     from .hotkey import kglobalaccel_available, shortcut_to_int
     from .inject import check_environment
+    from .textproc import describe_rules
 
     env = check_environment()
     server = health(cfg.server_url)
@@ -148,6 +149,7 @@ def cmd_doctor(cfg: Config) -> int:
         ("kglobalaccel", "есть" if kga else "нет", kga),
         ("сервер", server.describe(), server.ok),
         ("команда сервера", command or "не найдена", bool(command)),
+        ("текст", describe_rules(cfg), True),
         ("конфиг", str(paths.config_file()), paths.config_file().parent.exists()),
         ("лог", str(paths.log_file()), paths.log_file().parent.exists()),
     ]

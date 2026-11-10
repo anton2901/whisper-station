@@ -14,6 +14,7 @@ from .inject import inject_text
 from .recorder import Recorder, RecorderError, normalize_pcm, wav_duration, wav_peak
 from .service import ServerManager, ServerStatus
 from .stt import SttError, is_probable_hallucination, transcribe
+from .textproc import process_text
 
 log = logging.getLogger(__name__)
 
@@ -215,7 +216,13 @@ class Controller(QObject):
             return
         if generation != self._generation:
             return
-        self._transcribed.emit(result.text, result.elapsed_ms)
+        text = result.text
+        try:
+            text = process_text(text, self.cfg)
+        except Exception:  # noqa: BLE001 - чистка текста не должна ломать диктовку
+            log.exception("controller: чистка текста упала, вставляю как есть")
+            text = result.text
+        self._transcribed.emit(text, result.elapsed_ms)
 
     # --- слоты ----------------------------------------------------------
     def _on_server_ready(self, status: ServerStatus) -> None:
