@@ -45,6 +45,8 @@ sudo pacman -U whisper-station-*.pkg.tar.zst
 
 ```sh
 whisper-station server install                     # venv + faster-whisper, ~2 минуты
+# для NVIDIA добавьте CUDA-библиотеки (иначе будет CPU):
+whisper-station server install --cuda              # ~1.4 ГБ колёс cuBLAS/cuDNN
 whisper-station model download --name small --yes   # 0.5 ГБ; для GPU — large-v3-turbo
 whisper-station doctor
 whisper-station                                     # демон (трей)
@@ -119,6 +121,11 @@ threads = 0        # 0 — авто (ядра минус два)
 `large-v3-turbo` — ~3.6 с, то есть на CPU большая модель считается медленнее
 реального времени. Берите `small` или `medium`. Смена модели в настройках
 перезапускает сервер (модель читается только при старте).
+
+Для NVIDIA серверу нужны cuBLAS и cuDNN версии 12/9 — системных обычно нет, поэтому
+`server install --cuda` доставляет их колёсами NVIDIA в venv. Если библиотек нет,
+сервер не падает: при старте делает пробный прогон, уходит на CPU и пишет причину
+в `/health` (`fallback`). Замер на RTX 3060: 311 мс на 2.4 с речи (float16).
 
 Сервер — свой, в `~/.local/share/whisper-station/server-venv`:
 

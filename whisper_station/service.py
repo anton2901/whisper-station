@@ -39,11 +39,13 @@ class ServerStatus:
     model: str | None = None
     pid: int | None = None
     error: str | None = None
+    note: str | None = None
 
     def describe(self) -> str:
         if not self.ok:
             return f"сервер недоступен: {self.error or 'нет ответа'}"
-        return f"{self.model or 'whisper'} на {self.device or '?'}"
+        text = f"{self.model or 'whisper'} на {self.device or '?'}"
+        return f"{text} ({self.note})" if self.note else text
 
 
 def health(url: str, timeout: float = HEALTH_TIMEOUT) -> ServerStatus:
@@ -75,7 +77,20 @@ def health(url: str, timeout: float = HEALTH_TIMEOUT) -> ServerStatus:
             pid=pid,
             error=f"{state or 'нет статуса'}: {detail}",
         )
-    return ServerStatus(ok=True, device=device, model=model, pid=pid)
+    note = str(data["fallback"]) if data.get("fallback") else None
+    return ServerStatus(ok=True, device=device, model=model, pid=pid, note=note)
+
+
+def cuda_library_dirs() -> list[str]:
+    """Каталоги с cuBLAS/cuDNN из venv: ctranslate2 ищет их через LD_LIBRARY_PATH."""
+    dirs: list[str] = []
+    for python_dir in (server_env.venv_dir() / "lib").glob("python*"):
+        nvidia = python_dir / "site-packages" / "nvidia"
+        for name in ("cublas", "cudnn", "cuda_nvrtc"):
+            lib = nvidia / name / "lib"
+            if lib.is_dir():
+                dirs.append(str(lib))
+    return dirs
 
 
 def app_root() -> Path:
@@ -147,6 +162,13 @@ class ServerManager:
             root = str(app_root())
             current = os.environ.get("PYTHONPATH", "")
             env["PYTHONPATH"] = f"{root}{os.pathsep}{current}" if current else root
+            if server_env.cuda_enabled():
+                libs = cuda_library_dirs()
+                if libs:
+                    existing = os.environ.get("LD_LIBRARY_PATH", "")
+                    env["LD_LIBRARY_PATH"] = os.pathsep.join(
+                        libs + ([existing] if existing else [])
+                    )
             return SpawnPlan(
                 argv=[str(server_env.python()), "-m", "whisper_station.server"],
                 env=env,

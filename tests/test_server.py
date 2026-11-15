@@ -76,6 +76,15 @@ class WavTest(unittest.TestCase):
         self.assertIn("44100", problem or "")
 
 
+class CudaErrorTest(unittest.TestCase):
+    def test_recognises_cuda_failures(self) -> None:
+        from whisper_station.server.engine import cuda_error
+
+        self.assertTrue(cuda_error(RuntimeError("Library libcublas.so.12 is not found")))
+        self.assertTrue(cuda_error(RuntimeError("cuDNN version mismatch")))
+        self.assertFalse(cuda_error(RuntimeError("invalid WAV header")))
+
+
 class ComputeTest(unittest.TestCase):
     def test_auto_by_device(self) -> None:
         self.assertEqual(pick_compute("cuda", ""), "float16")

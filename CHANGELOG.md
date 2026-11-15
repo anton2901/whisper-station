@@ -14,6 +14,10 @@
 - `whisper-station server install|status|start|uninstall` — окружение сервера в
   `~/.local/share/whisper-station/server-venv` с faster-whisper; ставится только
   по явной команде, системный Python не трогается.
+- `server install --cuda` — cuBLAS/cuDNN из колёс NVIDIA (~1.4 ГБ) для GPU;
+  приложение подставляет их в `LD_LIBRARY_PATH` при запуске своего сервера.
+- Сервер прогревает модель пустым прогоном и при проблемах с CUDA уходит на CPU,
+  показывая причину в `/health` (`fallback`) и в `doctor`.
 - `[model]` в конфиге и группа «Модель распознавания» в настройках: каталог из шести
   моделей, устройство (`auto`/`cuda`/`cpu`), `compute`, потоки CPU. Выбор передаётся
   серверу через окружение при запуске.

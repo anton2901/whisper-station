@@ -22,6 +22,13 @@ from . import __version__, paths
 log = logging.getLogger(__name__)
 
 REQUIREMENTS = ("faster-whisper>=1.0,<2",)
+# cuBLAS/cuDNN для ctranslate2 на CUDA 12: системных библиотек обычно нет,
+# а колеса NVIDIA самодостаточны (в сумме ~1.4 ГБ).
+CUDA_REQUIREMENTS = (
+    "nvidia-cublas-cu12>=12,<13",
+    "nvidia-cudnn-cu12>=9,<10",
+    "nvidia-cuda-nvrtc-cu12>=12,<13",
+)
 MARKER = "install.json"
 MIN_PYTHON = (3, 9)
 PIP_TIMEOUT = 1800.0
@@ -53,6 +60,11 @@ def installed_info() -> dict[str, object]:
         return json.loads(marker_path().read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
+
+
+def cuda_enabled() -> bool:
+    """Ставили ли CUDA-библиотеки вместе с faster-whisper."""
+    return bool(installed_info().get("cuda"))
 
 
 def faster_whisper_version() -> str | None:
@@ -122,6 +134,7 @@ def install(
     source_python: str | None = None,
     *,
     force: bool = False,
+    cuda: bool = False,
     on_output: Callable[[str], None] | None = None,
 ) -> str:
     """Создать venv и поставить faster-whisper. Возвращает версию пакета."""
@@ -137,6 +150,7 @@ def install(
         raise InstallError(f"Не могу создать {target.parent}: {exc}") from exc
     _run([source, "-m", "venv", str(target)], on_output)
 
+    requirements = REQUIREMENTS + (CUDA_REQUIREMENTS if cuda else ())
     _run(
         [
             str(python()),
@@ -145,7 +159,7 @@ def install(
             "install",
             "--disable-pip-version-check",
             "--no-input",
-            *REQUIREMENTS,
+            *requirements,
         ],
         on_output,
     )
@@ -160,7 +174,8 @@ def install(
     marker = {
         "app_version": __version__,
         "faster_whisper": version,
-        "requirements": list(REQUIREMENTS),
+        "requirements": list(requirements),
+        "cuda": cuda,
         "python": str(python()),
         "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
@@ -173,6 +188,35 @@ def install(
         raise InstallError(f"Не могу записать {marker_path()}: {exc}") from exc
     log.info("server_env: готово, faster-whisper %s", version)
     return version
+
+
+def install_cuda(on_output: Callable[[str], None] | None = None) -> str:
+    """Доставить CUDA-библиотеки в уже готовое окружение (без пересоздания)."""
+    if not is_installed():
+        raise InstallError("Сначала выполните whisper-station server install")
+    _run(
+        [
+            str(python()),
+            "-m",
+            "pip",
+            "install",
+            "--disable-pip-version-check",
+            "--no-input",
+            *CUDA_REQUIREMENTS,
+        ],
+        on_output,
+    )
+    marker = installed_info()
+    marker["cuda"] = True
+    marker["requirements"] = sorted({*map(str, marker.get("requirements") or []), *CUDA_REQUIREMENTS})
+    try:
+        marker_path().write_text(
+            json.dumps(marker, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+    except OSError as exc:
+        raise InstallError(f"Не могу записать {marker_path()}: {exc}") from exc
+    log.info("server_env: CUDA-библиотеки добавлены")
+    return str(marker.get("faster_whisper") or "")
 
 
 def remove() -> None:

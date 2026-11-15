@@ -153,7 +153,10 @@ class ServerCommandTest(unittest.TestCase):
             with mock.patch.object(server_env, "faster_whisper_version", return_value="1.1.0"):
                 with mock.patch("builtins.print") as printed:
                     code = cli.cmd_server(
-                        argparse.Namespace(action="install", python=None, force=False), Config()
+                        argparse.Namespace(
+                            action="install", python=None, force=False, cuda=False
+                        ),
+                        Config(),
                     )
         self.assertEqual(code, 0)
         text = "\n".join(str(call.args[0]) for call in printed.call_args_list if call.args)
@@ -161,6 +164,8 @@ class ServerCommandTest(unittest.TestCase):
 
     def test_uninstall_needs_yes(self) -> None:
         with mock.patch("builtins.print") as printed:
-            code = cli.cmd_server(argparse.Namespace(action="uninstall", yes=False), Config())
+            code = cli.cmd_server(
+                argparse.Namespace(action="uninstall", yes=False, cuda=False), Config()
+            )
         self.assertEqual(code, 1)
         self.assertIn("--yes", str(printed.call_args.args[0]))

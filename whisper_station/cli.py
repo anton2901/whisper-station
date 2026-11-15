@@ -296,6 +296,7 @@ def cmd_server(args: argparse.Namespace, cfg: Config) -> int:
             json.dumps(
                 {
                     "installed": server_env.is_installed(),
+                    "cuda": server_env.cuda_enabled(),
                     "venv": str(server_env.venv_dir()),
                     "python": str(server_env.python()),
                     "faster_whisper": server_env.faster_whisper_version(),
@@ -313,15 +314,26 @@ def cmd_server(args: argparse.Namespace, cfg: Config) -> int:
 
     if args.action == "install":
         if server_env.is_installed() and not args.force:
+            if args.cuda and not server_env.cuda_enabled():
+                print("Добавляю cuBLAS/cuDNN в готовое окружение (~1.4 ГБ)")
+                try:
+                    server_env.install_cuda()
+                except server_env.InstallError as exc:
+                    print(f"{APP_NAME}: {exc}", file=sys.stderr)
+                    return 1
+                print("готово: CUDA-библиотеки на месте")
+                return 0
             print(
                 f"окружение сервера уже есть: faster-whisper "
                 f"{server_env.faster_whisper_version() or '?'} ({server_env.python()})"
             )
             print("переустановить: whisper-station server install --force")
             return 0
+        if args.cuda:
+            print("С CUDA: дополнительно cuBLAS/cuDNN из колёс NVIDIA (~1.4 ГБ)")
         print(f"Ставлю окружение сервера в {server_env.venv_dir()} — это пара минут")
         try:
-            version = server_env.install(args.python, force=args.force)
+            version = server_env.install(args.python, force=args.force, cuda=args.cuda)
         except server_env.InstallError as exc:
             print(f"{APP_NAME}: {exc}", file=sys.stderr)
             return 1
@@ -488,6 +500,9 @@ def build_parser() -> argparse.ArgumentParser:
     server_parser.add_argument("action", choices=("install", "status", "start", "uninstall"))
     server_parser.add_argument("--python", help="Python для venv (по умолчанию текущий)")
     server_parser.add_argument("--force", action="store_true", help="пересоздать окружение")
+    server_parser.add_argument(
+        "--cuda", action="store_true", help="поставить cuBLAS/cuDNN для NVIDIA (~1.4 ГБ)"
+    )
     server_parser.add_argument("--yes", action="store_true", help="подтвердить удаление")
     server_parser.set_defaults(func=cmd_server)
 

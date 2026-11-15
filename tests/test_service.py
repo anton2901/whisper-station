@@ -178,6 +178,23 @@ class SpawnPlanTest(unittest.TestCase):
         self.assertEqual(plan.argv, ["/bin/true"])
         self.assertNotIn("WHISPER_MODEL", plan.env)
 
+    def test_plan_adds_cuda_libraries(self) -> None:
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            lib = (
+                Path(tmp) / "server-venv" / "lib" / "python3.12" / "site-packages"
+                / "nvidia" / "cublas" / "lib"
+            )
+            lib.mkdir(parents=True)
+            with mock.patch.object(service.server_env.paths, "data_dir", return_value=Path(tmp)):
+                with mock.patch.object(service.server_env, "is_installed", return_value=True):
+                    with mock.patch.object(service.server_env, "cuda_enabled", return_value=True):
+                        plan = ServerManager(Config()).plan()
+        assert plan is not None
+        self.assertIn(str(lib), plan.env["LD_LIBRARY_PATH"])
+
     def test_plan_none_without_server(self) -> None:
         with mock.patch.object(service.server_env, "is_installed", return_value=False):
             with mock.patch.object(service, "find_server_command", return_value=None):

@@ -19,6 +19,9 @@ from .config import ServerConfig
 log = logging.getLogger(__name__)
 
 
+CUDA_ERROR_MARKERS = ("cublas", "cudnn", "nvrtc", "cuda driver", "no cuda", "out of memory")
+
+
 class EngineError(RuntimeError):
     """Распознать нельзя: модель не загрузилась."""
 
@@ -40,6 +43,12 @@ class Result:
     language: str
     duration: float
     segments: tuple[Segment, ...]
+
+
+def cuda_error(exc: BaseException) -> bool:
+    """Похоже ли на проблему с CUDA, после которой стоит уйти на CPU."""
+    text = str(exc).lower()
+    return any(marker in text for marker in CUDA_ERROR_MARKERS)
 
 
 def detect_device() -> str:
@@ -97,6 +106,7 @@ class Engine:
         self._device, self._compute = device, compute
         try:
             self._build(device, compute)
+            self._warmup()
         except Exception as exc:  # noqa: BLE001 - показываем причину в /health
             if device == "cuda":
                 log.warning("engine: CUDA не поднялась (%s), пробую CPU", exc)
@@ -104,6 +114,7 @@ class Engine:
                 self._device, self._compute = "cpu", "int8"
                 try:
                     self._build("cpu", "int8")
+                    self._warmup()
                 except Exception as fallback:  # noqa: BLE001
                     self._error = f"{type(fallback).__name__}: {fallback}"
                     log.error("engine: модель не загрузилась: %s", self._error)
@@ -134,6 +145,31 @@ class Engine:
             download_root=str(self.cfg.models_dir),
             local_files_only=not Path(source).exists(),
         )
+
+    def _warmup(self) -> None:
+        """Один пустой прогон: cuBLAS/cuDNN грузятся лениво, уже на инференсе.
+
+        Без прогрева `/health` успевал сказать «ok», а первая диктовка падала
+        с «Library libcublas.so.12 is not found».
+        """
+        import numpy as np
+
+        silence = np.zeros(16000, dtype=np.float32)
+        with self._lock:
+            segments, _info = self._model.transcribe(  # type: ignore[attr-defined]
+                silence,
+                beam_size=1,
+                vad_filter=False,
+                condition_on_previous_text=False,
+            )
+            list(segments)
+
+    def _fallback_to_cpu(self, reason: BaseException) -> None:
+        log.warning("engine: %s — перезагружаю модель на CPU", reason)
+        self._fallback = f"{type(reason).__name__}: {reason}; работаю на CPU"
+        self._device, self._compute = "cpu", "int8"
+        self._build("cpu", "int8")
+        self._warmup()
 
     # --- состояние ------------------------------------------------------
     @property
@@ -174,19 +210,17 @@ class Engine:
         seconds = _wav_seconds(wav)
         samples = wav_samples(wav)
         started = time.monotonic()
-        with self._lock:
-            segments, info = self._model.transcribe(  # type: ignore[attr-defined]
-                samples,
-                language=requested,
-                beam_size=self.cfg.beam,
-                vad_filter=True,
-                condition_on_previous_text=False,
-                initial_prompt=hint,
-            )
-            collected = tuple(
-                Segment(float(segment.start), float(segment.end), segment.text.strip())
-                for segment in segments
-            )
+        try:
+            segments, info = self._run(samples, requested, hint)
+        except Exception as exc:  # noqa: BLE001 - CUDA может отвалиться на инференсе
+            if self._device != "cuda" or not cuda_error(exc):
+                raise
+            self._fallback_to_cpu(exc)
+            segments, info = self._run(samples, requested, hint)
+        collected = tuple(
+            Segment(float(segment.start), float(segment.end), segment.text.strip())
+            for segment in segments
+        )
         text = " ".join(segment.text for segment in collected if segment.text).strip()
         log.info(
             "transcribe: %.1f с аудио, язык %s, за %.1f с, %d симв.",
@@ -201,6 +235,19 @@ class Engine:
             duration=seconds,
             segments=collected,
         )
+
+    def _run(self, samples, requested, hint):
+        """Один вызов transcribe под замком; возвращает (segments, info)."""
+        with self._lock:
+            segments, info = self._model.transcribe(  # type: ignore[attr-defined]
+                samples,
+                language=requested,
+                beam_size=self.cfg.beam,
+                vad_filter=True,
+                condition_on_previous_text=False,
+                initial_prompt=hint,
+            )
+            return list(segments), info
 
 
 def wav_samples(wav: bytes):
