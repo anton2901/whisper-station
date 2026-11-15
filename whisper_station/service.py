@@ -224,6 +224,15 @@ class ServerManager:
     def plan_used(self) -> SpawnPlan | None:
         return self._plan
 
+    def model_hint(self) -> str | None:
+        """Подсказка, если нашему серверу нечего загружать: модель не скачана."""
+        if not self.builtin_ready() or models.is_installed(self.cfg.model_name):
+            return None
+        return (
+            f"Модель {self.cfg.model_name} не скачана: "
+            f"whisper-station model download --name {self.cfg.model_name} --yes"
+        )
+
     def ensure(
         self,
         timeout: float = 90.0,
@@ -251,9 +260,11 @@ class ServerManager:
                 raise ServerUnavailable("Запуск сервера отменён")
             if self._proc is not None and self._proc.poll() is not None:
                 detail = self.read_stderr()
+                hint = self.model_hint()
                 raise ServerUnavailable(
                     f"Сервер завершился с кодом {self._proc.returncode}"
                     + (f": {detail[-300:]}" if detail else "")
+                    + (f". {hint}" if hint else "")
                 )
             status = health(self.cfg.server_url)
             if status.ok:
@@ -264,7 +275,10 @@ class ServerManager:
             if on_progress is not None:
                 on_progress(min(1.0, (time.monotonic() - started) / timeout))
             time.sleep(POLL_INTERVAL)
-        raise ServerUnavailable(f"Сервер не ответил за {timeout:.0f} с")
+        hint = self.model_hint()
+        raise ServerUnavailable(
+            f"Сервер не ответил за {timeout:.0f} с" + (f". {hint}" if hint else "")
+        )
 
     def read_stderr(self) -> str:
         if self._stderr is None:

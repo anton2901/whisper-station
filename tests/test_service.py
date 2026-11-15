@@ -132,6 +132,28 @@ class ServerManagerTest(unittest.TestCase):
         env = captured.get("env") or {}
         self.assertEqual(env.get("WHISPER_PARENT_PID"), str(os.getpid()))
 
+    def test_timeout_mentions_missing_model(self) -> None:
+        cfg = Config(server_url="http://127.0.0.1:9", model_name="small")
+        manager = ServerManager(cfg)
+        with mock.patch.object(service, "health", return_value=ServerStatus(False, error="нет")):
+            with mock.patch.object(service.server_env, "is_installed", return_value=True):
+                with mock.patch.object(service.models, "is_installed", return_value=False):
+                    with mock.patch.object(manager, "spawn"):
+                        with self.assertRaises(ServerUnavailable) as ctx:
+                            manager.ensure(timeout=0.3)
+        self.assertIn("model download --name small", str(ctx.exception))
+
+    def test_no_hint_when_model_present(self) -> None:
+        cfg = Config(server_url="http://127.0.0.1:9", model_name="small")
+        manager = ServerManager(cfg)
+        with mock.patch.object(service, "health", return_value=ServerStatus(False, error="нет")):
+            with mock.patch.object(service.server_env, "is_installed", return_value=True):
+                with mock.patch.object(service.models, "is_installed", return_value=True):
+                    with mock.patch.object(manager, "spawn"):
+                        with self.assertRaises(ServerUnavailable) as ctx:
+                            manager.ensure(timeout=0.3)
+        self.assertNotIn("model download", str(ctx.exception))
+
     def test_loading_server_is_not_spawned_twice(self) -> None:
         cfg = Config(server_url="http://127.0.0.1:9")
         manager = ServerManager(cfg)

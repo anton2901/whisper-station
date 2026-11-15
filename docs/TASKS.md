@@ -70,6 +70,7 @@
 - [x] CI: Arch-контейнер, `make lint && make test`, `makepkg -f --nocheck`
 - [x] Сборка из чистого `git archive`: пакет и `whisper-station 0.4.0`
 - [x] Проверка установленного дерева пакета: свой сервер поднимается, текст распознаётся
+- [x] `install.sh`: установка одной командой (`--dry-run`, `--cpu`, `--model`, `--no-autostart`)
 - [x] `CONTRIBUTING.md` и `docs/RELEASE.md` (порядок публикации, тег, архив, AUR)
 - [x] README: статус (CachyOS/KDE), зависимости, сервер и модели, ограничения
 - [ ] Заполнить `url` в PKGBUILD адресом репозитория

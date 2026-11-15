@@ -6,9 +6,10 @@ AUR и Flatpak — не в этом релизе.
 ## 1. Перед публикацией
 
 ```sh
-make lint && make test            # 245 тестов, линт чистый
+make lint && make test            # 247 тестов, линт чистый
 makepkg -f --nocheck              # пакет собирается из этой папки
 bin/whisper-station doctor        # на живой машине всё зелёное
+./install.sh --dry-run            # план установки для нового пользователя
 ```
 
 - [ ] `CHANGELOG.md` содержит `## [0.4.0]`, версии в `pyproject.toml`, `PKGBUILD`
@@ -47,7 +48,7 @@ makepkg -f --nocheck              # whisper-station-0.4.0-1-any.pkg.tar.zst
 
 ```sh
 git clone https://github.com/<owner>/whisper-station.git /tmp/ws-check
-cd /tmp/ws-check && makepkg -f --nocheck        # сборка из чистого клона
+cd /tmp/ws-check && ./install.sh                # весь путь установки как у пользователя
 sudo pacman -U whisper-station-0.4.0-1-any.pkg.tar.zst
 whisper-station server install --cuda
 whisper-station model download --name large-v3-turbo --yes
