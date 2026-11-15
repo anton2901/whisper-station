@@ -33,7 +33,8 @@ Other distributions and GNOME/Hyprland are untested; X11 is not supported.
 The primary target is CachyOS/Arch, KDE Plasma 6, Wayland (tested on Plasma 6.8):
 
 - Python 3.12+ with `PySide6`, `dbus-python`, `PyGObject`;
-- `pipewire` (`pw-record`; `parec` is a fallback), `wl-clipboard`, `libnotify`;
+- `pipewire` and `pipewire-audio` (`pw-record`/`pw-play`; `parec` from `libpulse` is a
+  fallback), `wl-clipboard`, `libnotify`;
 - `ydotool` and access to `/dev/uinput` — for pasting with `Ctrl+V` (on CachyOS the ACL
   is already in place);
 - the recognition server is installed by the app itself into a separate environment;

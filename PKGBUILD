@@ -12,6 +12,8 @@ depends=(
   'python-dbus'
   'python-gobject'
   'pipewire'
+  # pw-record/pw-play живут в pipewire-audio, а не в pipewire (у pipewire это optdepends).
+  'pipewire-audio'
   'libpulse'
   'wl-clipboard'
   'libnotify'

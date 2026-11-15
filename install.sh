@@ -10,7 +10,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEPS=(pyside6 python-dbus python-gobject pipewire wl-clipboard libnotify ydotool)
+DEPS=(pyside6 python-dbus python-gobject pipewire pipewire-audio wl-clipboard libnotify ydotool)
 CUDA=auto            # auto|yes|no
 MODEL=""             # пусто — выбрать по устройству
 AUTOSTART=yes

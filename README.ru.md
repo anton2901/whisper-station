@@ -30,7 +30,8 @@
 Основной сценарий — CachyOS/Arch, KDE Plasma 6, Wayland (проверено на Plasma 6.8):
 
 - Python 3.12+ с `PySide6`, `dbus-python`, `PyGObject`;
-- `pipewire` (`pw-record`; `parec` — запасной вариант), `wl-clipboard`, `libnotify`;
+- `pipewire` и `pipewire-audio` (`pw-record`/`pw-play`; `parec` из `libpulse` — запасной
+  вариант), `wl-clipboard`, `libnotify`;
 - `ydotool` и доступ к `/dev/uinput` — для вставки через `Ctrl+V` (на CachyOS ACL уже есть);
 - сервер распознавания ставит само приложение в отдельное окружение, модель качается по
   требованию. Интернет нужен только этим двум шагам.
