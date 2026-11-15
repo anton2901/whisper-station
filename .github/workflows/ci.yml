@@ -40,6 +40,13 @@ jobs:
 
       - name: Сборка пакета (без установки)
         run: |
+          set +e
           useradd -m builder
           chown -R builder:builder .
-          su builder -c 'makepkg -f --nocheck'
+          output=$(su builder -c 'makepkg -f --nocheck' 2>&1)
+          code=$?
+          echo "$output"
+          if [ $code -ne 0 ]; then
+            echo "$output" | tail -25 | while IFS= read -r line; do echo "::error::${line:- }"; done
+          fi
+          exit $code
