@@ -4,6 +4,12 @@
 распознавание локальной моделью Whisper → текст в активном окне. Без облака и телеметрии:
 сеть только на `127.0.0.1`.
 
+*Local dictation for KDE Plasma 6 on Wayland: a global hotkey, on-device Whisper,
+text into the active window. No cloud, loopback only. Tested on CachyOS/Arch only.*
+
+**Статус:** 0.4.0, публикуется как инструмент для **CachyOS/Arch + KDE Plasma 6 + Wayland**.
+Другие дистрибутивы и GNOME/Hyprland не проверялись; X11 не поддерживается.
+
 ![HUD во время записи](docs/hud-station.png)
 
 ## Что нужно
@@ -36,7 +42,10 @@ make doctor      # проверка окружения: хоткей, встав
 ## Установка пакетом
 
 ```sh
-makepkg -f                       # собрать (зависимости должны стоять)
+# зависимости (если ещё не стоят)
+sudo pacman -S --needed pyside6 python-dbus python-gobject pipewire wl-clipboard libnotify ydotool
+
+makepkg -sf                      # собрать; -s доставит недостающие зависимости
 sudo pacman -U whisper-station-*.pkg.tar.zst
 ```
 
@@ -201,7 +210,7 @@ rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/w
 
 Лицензия: **GNU GPL v3** (`LICENSE`).
 
-Архитектура и решения — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DECISIONS.md](docs/DECISIONS.md), проверки — [docs/VERIFICATION.md](docs/VERIFICATION.md), план — [docs/ROADMAP.md](docs/ROADMAP.md), разбор Handy — [docs/HANDY-ANALYSIS.md](docs/HANDY-ANALYSIS.md).
+Архитектура и решения — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DECISIONS.md](docs/DECISIONS.md), проверки — [docs/VERIFICATION.md](docs/VERIFICATION.md), план — [docs/ROADMAP.md](docs/ROADMAP.md), разбор Handy — [docs/HANDY-ANALYSIS.md](docs/HANDY-ANALYSIS.md), публикация — [docs/RELEASE.md](docs/RELEASE.md), вклад — [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Схема архитектуры (интерактивный HTML, генерируется Archify из `candidate.json`):
 `.archify/architecture-whisper-station-20261107-194924/whisper-station.html`.

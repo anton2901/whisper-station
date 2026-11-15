@@ -9,7 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: archlinux:latest
+    container: archlinux:base-devel   # сразу с make, fakeroot и ключами pacman
+    timeout-minutes: 15
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
@@ -29,7 +30,6 @@ jobs:
 
       - name: Сборка пакета (без установки)
         run: |
-          pacman -S --noconfirm --needed base-devel
           useradd -m builder
           chown -R builder:builder .
           su builder -c 'makepkg -f --nocheck'
