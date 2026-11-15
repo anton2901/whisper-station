@@ -18,7 +18,7 @@ jobs:
         run: |
           pacman -Syu --noconfirm --needed \
             git python pyside6 python-dbus python-gobject \
-            pipewire pipewire-audio wl-clipboard libnotify
+            pipewire pipewire-audio wl-clipboard libnotify libpulse
 
       - uses: actions/checkout@v4
 
