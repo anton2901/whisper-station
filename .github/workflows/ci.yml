@@ -26,7 +26,17 @@ jobs:
         run: make lint
 
       - name: Тесты
-        run: make test
+        run: |
+          set +e
+          output=$(make test 2>&1)
+          code=$?
+          echo "$output"
+          if [ $code -ne 0 ]; then
+            # Лог приватный, аннотации — публичные: выносим причину в них.
+            echo "$output" | grep -E "^(FAIL|ERROR|Traceback|  File |AssertionError|[A-Za-z]*Error)" \
+              | head -30 | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit $code
 
       - name: Сборка пакета (без установки)
         run: |
