@@ -27,3 +27,6 @@ src/
 .env
 *.log
 .DS_Store
+
+# Локальные тестовые данные
+.test-data/

@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - name: Пакеты
+        run: |
+          pacman -Syu --noconfirm --needed \
+            git python pyside6 python-dbus python-gobject \
+            pipewire wl-clipboard libnotify
+
+      - uses: actions/checkout@v4
+
+      - name: Линт
+        run: make lint
+
+      - name: Тесты
+        run: make test
+
+      - name: Сборка пакета (без установки)
+        run: |
+          pacman -S --noconfirm --needed base-devel
+          useradd -m builder
+          chown -R builder:builder .
+          su builder -c 'makepkg -f --nocheck'
