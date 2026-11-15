@@ -189,6 +189,7 @@ PySide6 6.12.0. Сервер Whisper: `large-v3-turbo`, CUDA float16, `127.0.0.1
 | Скачивание модели | `model download --name small --yes` | 464 МБ в каталог приложения |
 | Свой сервер целиком | `ServerManager.ensure()` + `stop_owned()` | поднялся, ответил, остановлен, pid пуст |
 | GPU (RTX 3060, float16) | 2.4 с речи через свой сервер | 311 мс, «Доброе утро!» |
+| Холодный старт | `ServerManager.ensure()` | CPU 1.8 с, GPU 2.3 с (прогрев только для CUDA) |
 | Откат без CUDA-библиотек | `WHISPER_DEVICE=cuda` без `LD_LIBRARY_PATH` | ушёл на CPU, `fallback`: «libcublas.so.12 is not found», текст верный |
 | Чужой сервер | `ensure()` при живом сервере на порту | использует, не запускает и не убивает |
 | CI | `.github/workflows/ci.yml` | Arch-контейнер: lint, tests, `makepkg -f --nocheck` |

@@ -106,7 +106,7 @@ class Engine:
         self._device, self._compute = device, compute
         try:
             self._build(device, compute)
-            self._warmup()
+            self._warmup_if_gpu()
         except Exception as exc:  # noqa: BLE001 - показываем причину в /health
             if device == "cuda":
                 log.warning("engine: CUDA не поднялась (%s), пробую CPU", exc)
@@ -114,7 +114,6 @@ class Engine:
                 self._device, self._compute = "cpu", "int8"
                 try:
                     self._build("cpu", "int8")
-                    self._warmup()
                 except Exception as fallback:  # noqa: BLE001
                     self._error = f"{type(fallback).__name__}: {fallback}"
                     log.error("engine: модель не загрузилась: %s", self._error)
@@ -146,21 +145,26 @@ class Engine:
             local_files_only=not Path(source).exists(),
         )
 
-    def _warmup(self) -> None:
-        """Один пустой прогон: cuBLAS/cuDNN грузятся лениво, уже на инференсе.
+    def _warmup_if_gpu(self) -> None:
+        """Пробный прогон только для CUDA: на CPU греть нечего, а старт дороже.
 
-        Без прогрева `/health` успевал сказать «ok», а первая диктовка падала
-        с «Library libcublas.so.12 is not found».
+        cuBLAS/cuDNN грузятся лениво, уже на инференсе: без прогрева `/health`
+        успевал сказать «ok», а первая диктовка падала с «libcublas.so.12 is
+        not found».
         """
+        if self._device != "cuda":
+            return
         import numpy as np
 
-        silence = np.zeros(16000, dtype=np.float32)
+        silence = np.zeros(9600, dtype=np.float32)  # 0.6 с
         with self._lock:
             segments, _info = self._model.transcribe(  # type: ignore[attr-defined]
                 silence,
+                language="en",
                 beam_size=1,
                 vad_filter=False,
                 condition_on_previous_text=False,
+                without_timestamps=True,
             )
             list(segments)
 
@@ -169,7 +173,6 @@ class Engine:
         self._fallback = f"{type(reason).__name__}: {reason}; работаю на CPU"
         self._device, self._compute = "cpu", "int8"
         self._build("cpu", "int8")
-        self._warmup()
 
     # --- состояние ------------------------------------------------------
     @property
