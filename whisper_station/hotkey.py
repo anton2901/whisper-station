@@ -146,6 +146,8 @@ class GlobalHotkey:
         """
         del timeout  # вызов синхронный, параметр оставлен для совместимости
         with self._lock:
+            # Комбинацию проверяем до D-Bus: без шины ошибка должна быть про неё.
+            shortcut_to_int(sequence)
             self._ensure_bus()
             self._stopped = False
             return self._apply(sequence, force)
@@ -167,27 +169,35 @@ class GlobalHotkey:
     def _ensure_bus(self) -> None:
         if self._bus is not None:
             return
-        import dbus
-        from dbus.mainloop.glib import DBusGMainLoop
+        try:
+            import dbus
+            from dbus.mainloop.glib import DBusGMainLoop
 
-        # Один раз на процесс: дальше GLib-источники обрабатывает цикл событий Qt.
-        DBusGMainLoop(set_as_default=True)
+            # Один раз на процесс: дальше GLib-источники обрабатывает цикл событий Qt.
+            DBusGMainLoop(set_as_default=True)
+            bus = dbus.SessionBus(private=True)
+            daemon = dbus.Interface(bus.get_object(SERVICE, OBJECT_PATH), INTERFACE)
+        except Exception as exc:  # noqa: BLE001 - нет шины/сервиса — это не падение
+            raise HotkeyError(f"Хоткей недоступен: нет сеансовой шины D-Bus ({exc})") from exc
         self._dbus = dbus
-        self._bus = dbus.SessionBus(private=True)
-        self._daemon = dbus.Interface(self._bus.get_object(SERVICE, OBJECT_PATH), INTERFACE)
-        for signal_name in ("globalShortcutPressed", "pressed"):
-            self._bus.add_signal_receiver(
-                self._on_signal_pressed,
-                signal_name=signal_name,
+        self._bus = bus
+        self._daemon = daemon
+        try:
+            for signal_name in ("globalShortcutPressed", "pressed"):
+                bus.add_signal_receiver(
+                    self._on_signal_pressed,
+                    signal_name=signal_name,
+                    dbus_interface=COMPONENT_INTERFACE,
+                    bus_name=SERVICE,
+                )
+            bus.add_signal_receiver(
+                self._on_signal_released,
+                signal_name="globalShortcutReleased",
                 dbus_interface=COMPONENT_INTERFACE,
                 bus_name=SERVICE,
             )
-        self._bus.add_signal_receiver(
-            self._on_signal_released,
-            signal_name="globalShortcutReleased",
-            dbus_interface=COMPONENT_INTERFACE,
-            bus_name=SERVICE,
-        )
+        except Exception as exc:  # noqa: BLE001 - шина может успеть закрыться
+            raise HotkeyError(f"Хоткей недоступен: шина не принимает сигналы ({exc})") from exc
 
     def _apply(self, sequence: str, force: bool) -> str:
         dbus = self._dbus

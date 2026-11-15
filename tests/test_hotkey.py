@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 from whisper_station.hotkey import (
     ActionId,
@@ -80,6 +81,28 @@ class GlobalHotkeyTest(unittest.TestCase):
             hotkey.start("", timeout=5.0)
         hotkey.stop()
         self.assertFalse(hotkey.active)
+
+    def test_bad_sequence_checked_before_dbus(self) -> None:
+        hotkey = GlobalHotkey(lambda: None)
+        try:
+            import dbus
+        except ImportError:
+            self.skipTest("нет dbus-python")
+        with mock.patch.object(dbus, "SessionBus", side_effect=AssertionError("bus touched")):
+            with self.assertRaises(HotkeyError):
+                hotkey.start("")
+        hotkey.stop()
+
+    def test_missing_session_bus_is_hotkey_error(self) -> None:
+        hotkey = GlobalHotkey(lambda: None)
+        try:
+            import dbus
+        except ImportError:
+            self.skipTest("нет dbus-python")
+        with mock.patch.object(dbus, "SessionBus", side_effect=RuntimeError("no session bus")):
+            with self.assertRaises(HotkeyError) as ctx:
+                hotkey.start("Meta+Alt+D")
+        self.assertIn("D-Bus", str(ctx.exception))
 
     def test_availability_is_bool(self) -> None:
         self.assertIsInstance(kglobalaccel_available(), bool)

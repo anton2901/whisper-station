@@ -6,7 +6,7 @@ AUR и Flatpak — не в этом релизе.
 ## 1. Перед публикацией
 
 ```sh
-make lint && make test            # 249 тестов, линт чистый
+make lint && make test            # 251 тест, линт чистый
 makepkg -f --nocheck              # пакет собирается из этой папки
 bin/whisper-station doctor        # на живой машине всё зелёное
 ./install.sh --dry-run            # план установки для нового пользователя
