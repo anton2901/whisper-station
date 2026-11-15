@@ -6,7 +6,7 @@ On-device dictation for KDE Plasma 6 on Wayland: a global hotkey → microphone 
 Whisper model → text into the active window. No cloud, no telemetry: the only network
 traffic is `127.0.0.1`.
 
-**Status:** 0.4.0, published as a **CachyOS/Arch + KDE Plasma 6 + Wayland** tool.
+**Status:** 0.4.1, published as a **CachyOS/Arch + KDE Plasma 6 + Wayland** tool.
 Other distributions and GNOME/Hyprland are untested; X11 is not supported.
 
 ![HUD while recording](docs/screenshot-hud.png)

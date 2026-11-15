@@ -1,6 +1,6 @@
 # Maintainer: av <av@localhost>
 pkgname=whisper-station
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc="Локальная диктовка для KDE Plasma 6 / Wayland: хоткей, HUD, вставка текста"
 arch=('any')

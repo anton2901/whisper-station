@@ -42,8 +42,8 @@ release notes. Остаётся открыть Releases и нажать **Publis
 Ручной путь, если Actions недоступны:
 
 ```sh
-git tag -a v0.4.0 -m "whisper-station 0.4.0"
-git push origin v0.4.0
+git tag -a v0.4.1 -m "whisper-station 0.4.1"
+git push origin v0.4.1
 ```
 
 Дальше: Releases → Draft a new release → выбрать тег → **Generate release notes** →
