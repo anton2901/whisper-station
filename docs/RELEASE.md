@@ -35,9 +35,13 @@ git push -u origin main
 make release          # линт, тесты, тег vX.Y.Z, push тега
 ```
 
-Тег запускает `.github/workflows/release.yml`: он собирает пакет, создаёт **черновик**
-релиза с приложенным `whisper-station-X.Y.Z-1-any.pkg.tar.zst` и автоматическими
-release notes. Остаётся открыть Releases и нажать **Publish** — вписывать ничего не нужно.
+Тег запускает `.github/workflows/release.yml`: он собирает пакет, берёт описание из
+раздела `CHANGELOG.md` для этой версии, создаёт **черновик** релиза с приложенным
+`whisper-station-X.Y.Z-1-any.pkg.tar.zst` и блоком «Установка». Остаётся открыть
+Releases и нажать **Publish** — вписывать ничего не нужно.
+
+Поэтому перед `make release` в `CHANGELOG.md` должен быть раздел `## [X.Y.Z]` — из него
+и получаются заметки (заодно это проверяет `tests/test_version.py`).
 
 Ручной путь, если Actions недоступны:
 

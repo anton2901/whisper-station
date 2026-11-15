@@ -36,11 +36,32 @@ jobs:
           chown -R builder:builder .
           su builder -c 'makepkg -f --nocheck'
 
+      - name: Заметки из CHANGELOG
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v version="$version" '
+            $0 ~ "^## \\[" version "\\]" { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "whisper-station $version" > release-notes.md
+          fi
+          {
+            echo
+            echo "## Установка"
+            echo
+            echo '```sh'
+            echo "git clone https://github.com/${GITHUB_REPOSITORY}.git whisper-station"
+            echo "cd whisper-station && ./install.sh"
+            echo '```'
+          } >> release-notes.md
+
       - name: Черновик релиза
         run: |
           version="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" \
             --draft \
-            --generate-notes \
             --title "whisper-station $version" \
+            --notes-file release-notes.md \
             whisper-station-*.pkg.tar.zst
