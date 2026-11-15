@@ -209,6 +209,9 @@ sudo pacman -R whisper-station
 rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/whisper-station
 ```
 
+Settings from the pre-0.3 versions live in `~/.config/whisper-dictate` and are migrated on
+start; delete that directory too if you want a clean state.
+
 ## Brand and docs
 
 The icon and palette live in `brand/`: the master `brand/app.svg`, exports, tray icons for

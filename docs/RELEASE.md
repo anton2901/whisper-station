@@ -6,7 +6,7 @@ AUR и Flatpak — не в этом релизе.
 ## 1. Перед публикацией
 
 ```sh
-make lint && make test            # 247 тестов, линт чистый
+make lint && make test            # 249 тестов, линт чистый
 makepkg -f --nocheck              # пакет собирается из этой папки
 bin/whisper-station doctor        # на живой машине всё зелёное
 ./install.sh --dry-run            # план установки для нового пользователя
@@ -55,7 +55,8 @@ makepkg -f --nocheck              # whisper-station-0.4.0-1-any.pkg.tar.zst
 ```sh
 whisper-station server uninstall --yes
 sudo pacman -R whisper-station
-rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/whisper-station
+rm -rf ~/.config/whisper-station ~/.config/whisper-dictate \
+       ~/.local/state/whisper-station ~/.local/share/whisper-station
 
 cd ~/Documents/av-wisper-linux
 ./install.sh          # зависимости, пакет, сервер, модель, автозапуск, doctor

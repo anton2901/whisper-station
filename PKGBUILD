@@ -4,8 +4,7 @@ pkgver=0.4.0
 pkgrel=1
 pkgdesc="Локальная диктовка для KDE Plasma 6 / Wayland: хоткей, HUD, вставка текста"
 arch=('any')
-# Заполнить адресом репозитория при публикации (AUR требует поле url).
-url=""
+url="https://github.com/anton2901/whisper-station"
 license=('GPL-3.0-only')
 depends=(
   'python'

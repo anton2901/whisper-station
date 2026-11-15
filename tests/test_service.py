@@ -132,6 +132,20 @@ class ServerManagerTest(unittest.TestCase):
         env = captured.get("env") or {}
         self.assertEqual(env.get("WHISPER_PARENT_PID"), str(os.getpid()))
 
+    def test_explicit_server_error_raises_at_once(self) -> None:
+        cfg = Config(server_url="http://127.0.0.1:9")
+        manager = ServerManager(cfg)
+        broken = ServerStatus(
+            False,
+            error="error: модель small не скачана: whisper-station model download",
+        )
+        with mock.patch.object(service, "health", return_value=broken):
+            with mock.patch.object(manager, "spawn") as spawn:
+                with self.assertRaises(ServerUnavailable) as ctx:
+                    manager.ensure(timeout=30)
+        spawn.assert_not_called()
+        self.assertIn("model download", str(ctx.exception))
+
     def test_timeout_mentions_missing_model(self) -> None:
         cfg = Config(server_url="http://127.0.0.1:9", model_name="small")
         manager = ServerManager(cfg)

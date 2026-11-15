@@ -201,6 +201,9 @@ sudo pacman -R whisper-station
 rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/whisper-station
 ```
 
+Настройки версий до 0.3 лежат в `~/.config/whisper-dictate` и переносятся при запуске;
+удалите и его, если нужен полностью чистый старт.
+
 ## Бренд и документы
 
 Иконка и палитра — в `brand/`: мастер `brand/app.svg`, экспорты, трей для светлой

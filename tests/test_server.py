@@ -85,6 +85,17 @@ class CudaErrorTest(unittest.TestCase):
         self.assertFalse(cuda_error(RuntimeError("invalid WAV header")))
 
 
+class MissingModelTest(unittest.TestCase):
+    def test_recognises_local_entry_not_found(self) -> None:
+        from whisper_station.server.engine import missing_model
+
+        error = RuntimeError(
+            "Cannot find an appropriate cached snapshot folder for the specified revision"
+        )
+        self.assertTrue(missing_model(error))
+        self.assertFalse(missing_model(RuntimeError("invalid WAV header")))
+
+
 class ComputeTest(unittest.TestCase):
     def test_auto_by_device(self) -> None:
         self.assertEqual(pick_compute("cuda", ""), "float16")

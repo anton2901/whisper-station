@@ -224,6 +224,12 @@ class ServerManager:
     def plan_used(self) -> SpawnPlan | None:
         return self._plan
 
+    @staticmethod
+    def _explicit_error(status: ServerStatus) -> str | None:
+        """Сервер уже ответил ошибкой (не «загружаюсь») — повторять бессмысленно."""
+        text = str(status.error or "")
+        return text.split(":", 1)[1].strip() if text.startswith("error:") else None
+
     def model_hint(self) -> str | None:
         """Подсказка, если нашему серверу нечего загружать: модель не скачана."""
         if not self.builtin_ready() or models.is_installed(self.cfg.model_name):
@@ -244,6 +250,9 @@ class ServerManager:
         if status.ok:
             log.info("server: использую уже запущенный (%s)", status.describe())
             return status
+        explicit = self._explicit_error(status)
+        if explicit:
+            raise ServerUnavailable(explicit)
         # Кто-то уже поднимает сервер (наш прошлый процесс или чужой):
         # второй экземпляр занял бы порт и упал, поэтому просто ждём.
         starting = bool(status.error) and status.error.startswith("loading")
@@ -272,6 +281,9 @@ class ServerManager:
                     "server: поднялся за %.1f с (%s)", time.monotonic() - started, status.describe()
                 )
                 return status
+            explicit = self._explicit_error(status)
+            if explicit:
+                raise ServerUnavailable(explicit)
             if on_progress is not None:
                 on_progress(min(1.0, (time.monotonic() - started) / timeout))
             time.sleep(POLL_INTERVAL)

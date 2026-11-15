@@ -21,6 +21,17 @@ ASSUME_YES=no
 # старую установленную версию (bin/ сам выставляет PYTHONPATH).
 WS="$REPO_DIR/bin/whisper-station"
 
+# JSON-поля из CLI: grep по всему выводу ловит лишнее (например, "configured").
+json_field() {
+    python3 -c 'import json,sys; data=json.load(sys.stdin); print(data.get(sys.argv[1]))' "$1"
+}
+
+model_installed() {
+    "$WS" model status 2>/dev/null \
+        | python3 -c 'import json,sys; data=json.load(sys.stdin); print(sys.argv[1] in data.get("installed", []))' "$MODEL" \
+        | grep -q True
+}
+
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[33m%s\033[0m\n' "$*"; }
 die() { printf '\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
@@ -91,6 +102,15 @@ fi
 
 say "План: CUDA=$CUDA, модель=$MODEL, автозапуск=$AUTOSTART, каталог=$REPO_DIR"
 
+if [ -f "$HOME/.config/whisper-dictate/config.toml" ]; then
+    warn "Найден старый конфиг ~/.config/whisper-dictate — настройки перенесутся из него."
+    warn "Для чистого старта удалите: ~/.config/whisper-dictate ~/.config/whisper-station"
+fi
+
+# Старый демон держит сокет и работает старым кодом — перед обновлением гасим.
+say "Останавливаю запущенный экземпляр"
+run "$WS" quit
+
 # --- 1. зависимости -----------------------------------------------------
 say "Зависимости"
 missing=$(pacman -T "${DEPS[@]}" 2>/dev/null || true)
@@ -115,8 +135,8 @@ fi
 
 # --- 3. окружение сервера ----------------------------------------------
 say "Окружение сервера (faster-whisper)"
-if "$WS" server status | grep -q '"installed": true'; then
-    if [ "$CUDA" = yes ] && ! "$WS" server status | grep -q '"cuda": true'; then
+if [ "$("$WS" server status | json_field installed)" = "True" ]; then
+    if [ "$CUDA" = yes ] && [ "$("$WS" server status | json_field cuda)" != "True" ]; then
         run "$WS" server install --cuda
     else
         echo "   уже установлено"
@@ -129,7 +149,7 @@ fi
 
 # --- 4. модель ----------------------------------------------------------
 say "Модель $MODEL"
-if "$WS" model status | grep -q "\"$MODEL\""; then
+if model_installed; then
     echo "   уже скачана"
 else
     run "$WS" model download --name "$MODEL" --yes

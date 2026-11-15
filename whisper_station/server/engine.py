@@ -12,7 +12,6 @@ import os
 import threading
 import time
 from dataclasses import dataclass
-from pathlib import Path
 
 from .config import ServerConfig
 
@@ -43,6 +42,13 @@ class Result:
     language: str
     duration: float
     segments: tuple[Segment, ...]
+
+
+def missing_model(exc: BaseException) -> bool:
+    """faster-whisper не нашёл модель локально (скачивание выключено)."""
+    name = type(exc).__name__.lower()
+    text = str(exc).lower()
+    return "localentrynotfound" in name or "cached snapshot" in text or "local_files_only" in text
 
 
 def cuda_error(exc: BaseException) -> bool:
@@ -108,7 +114,14 @@ class Engine:
             self._build(device, compute)
             self._warmup_if_gpu()
         except Exception as exc:  # noqa: BLE001 - показываем причину в /health
-            if device == "cuda":
+            if missing_model(exc):
+                # Не маскируем это под сбой CUDA и не качаем 1.6 ГБ молча.
+                self._error = (
+                    f"модель {self.cfg.model} не скачана: whisper-station model download "
+                    f"--name {self.cfg.model} --yes"
+                )
+                log.error("engine: %s", self._error)
+            elif device == "cuda":
                 log.warning("engine: CUDA не поднялась (%s), пробую CPU", exc)
                 self._fallback = f"CUDA не поднялась ({type(exc).__name__}: {exc}); работаю на CPU"
                 self._device, self._compute = "cpu", "int8"
@@ -135,14 +148,15 @@ class Engine:
         from faster_whisper import WhisperModel
 
         source = self._source()
-        # Локальный каталог читаем без похода в HuggingFace за ревизией.
+        # Скачивание выключено всегда: модель ставит `whisper-station model download`.
+        # Локальный каталог читается напрямую, кэш HuggingFace — без сети.
         self._model = WhisperModel(
             source,
             device=device,
             compute_type=compute,
             cpu_threads=self.cfg.threads_effective,
             download_root=str(self.cfg.models_dir),
-            local_files_only=not Path(source).exists(),
+            local_files_only=True,
         )
 
     def _warmup_if_gpu(self) -> None:

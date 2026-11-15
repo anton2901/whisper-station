@@ -139,6 +139,15 @@ def cmd_doctor(cfg: Config) -> int:
     kga = kglobalaccel_available()
     env_ok = server_env.is_installed()
     model_ok = models.is_installed(cfg.model_name)
+    server_ok = server.ok
+    server_text = server.describe()
+    if not server.ok:
+        if str(server.error or "").startswith("error:"):
+            server_text = str(server.error)
+        elif env_ok or command:
+            server_ok = True
+            server_text = "не запущен — поднимется при первой диктовке"
+    legacy = paths.legacy_config_file()
     rows: list[tuple[str, str, bool]] = [
         ("сессия", f"{env['desktop'] or '?'} / {session_type}", bool(env["wayland"])),
         ("аудио", ", ".join(available_backends()) or "нет parec/pw-record", bool(available_backends())),
@@ -151,7 +160,7 @@ def cmd_doctor(cfg: Config) -> int:
             bool(env["ydotoold_socket"]) or bool(env["uinput"]),
         ),
         ("kglobalaccel", "есть" if kga else "нет", kga),
-        ("сервер", server.describe(), server.ok),
+        ("сервер", server_text, server_ok),
         ("устройство", f"в конфиге {cfg.model_device}, детект {catalog.detect_device()}", True),
         ("команда сервера", command or "не найдена", bool(command)),
         (
@@ -170,6 +179,13 @@ def cmd_doctor(cfg: Config) -> int:
         ("конфиг", str(paths.config_file()), paths.config_file().parent.exists()),
         ("лог", str(paths.log_file()), paths.log_file().parent.exists()),
     ]
+    if legacy.is_file():
+        # Настройки старого имени приложения подхватываются при запуске и
+        # возвращают удалённые значения — об этом стоит знать.
+        rows.insert(
+            -1,
+            ("старый конфиг", f"{legacy} — переносится, можно удалить", True),
+        )
     try:
         shortcut_to_int(cfg.hotkey)
         hotkey_ok, hotkey_text = True, cfg.hotkey
