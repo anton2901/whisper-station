@@ -36,16 +36,28 @@ git tag -a v0.4.0 -m "whisper-station 0.4.0"
 git push origin v0.4.0
 ```
 
-К релизу приложить два файла:
+Дальше на GitHub: **Releases → Draft a new release**. Это просто форма поверх тега,
+ничего не создаётся до кнопки Publish. Заполнить нужно минимум:
 
-```sh
-git archive --format=tar.gz --prefix=whisper-station-0.4.0/ \
-  -o whisper-station-0.4.0.tar.gz HEAD
-makepkg -f --nocheck              # whisper-station-0.4.0-1-any.pkg.tar.zst
+1. **Choose a tag** — выбрать `v0.4.0` (он уже есть после `git push origin v0.4.0`).
+2. **Release title** — `whisper-station 0.4.0` (можно оставить пустым, будет `v0.4.0`).
+3. **Describe this release** — нажать **Generate release notes**: GitHub сам подставит
+   список коммитов. Писать руками не нужно.
+4. **Attach binaries** — перетащить только `whisper-station-0.4.0-1-any.pkg.tar.zst`.
+   Архивы исходников (`Source code.zip/tar.gz`) GitHub добавляет сам, `git archive` не нужен.
+5. **Publish release**.
+
+Если описание хочется по-человечески, вот готовый текст:
+
+```markdown
+Первая публичная версия для CachyOS/Arch (KDE Plasma 6, Wayland).
+
+- свой сервер распознавания: `whisper-station server install` (faster-whisper в отдельном venv)
+- шесть моделей на выбор, GPU (CUDA) или CPU, `whisper-station model download`
+- HUD с осциллограммой и живым предпросмотром, push-to-talk
+- словарь терминов уходит в модель как prompt
+- установка одной командой: `./install.sh`
 ```
-
-В описании релиза — короткий блок «что нового» из `CHANGELOG.md` и команды установки
-из `README.md`.
 
 ## 4. Чистая проверка перед релизом (обязательно)
 
@@ -67,7 +79,7 @@ cd ~/Documents/av-wisper-linux
 ## 5. Проверка после публикации
 
 ```sh
-git clone https://github.com/<owner>/whisper-station.git /tmp/ws-check
+git clone https://github.com/anton2901/whisper-station.git /tmp/ws-check
 cd /tmp/ws-check && ./install.sh                # весь путь установки как у пользователя
 whisper-station doctor
 ```
