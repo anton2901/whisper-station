@@ -31,6 +31,11 @@ HOTKEY_MODES = ("toggle", "press")
 AUDIO_BACKENDS = ("auto", "parec", "pw-record")
 LANGUAGES = ("ru", "en", "auto")
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
+# Модель и устройство: приложение передаёт их своему серверу через окружение.
+MODEL_DEVICES = ("auto", "cuda", "cpu")
+MODEL_COMPUTE = ("auto", "float16", "int8", "int8_float16", "float32")
+DEFAULT_MODEL = "large-v3-turbo"
+MAX_THREADS = 64
 
 # Секция TOML -> {ключ в файле: поле Config}. Порядок важен для записи.
 SECTIONS: dict[str, dict[str, str]] = {
@@ -41,6 +46,12 @@ SECTIONS: dict[str, dict[str, str]] = {
         "server_url": "server_url",
         "server_command": "server_command",
         "server_autostart": "server_autostart",
+    },
+    "model": {
+        "name": "model_name",
+        "device": "model_device",
+        "compute": "model_compute",
+        "threads": "model_threads",
     },
     "insert": {
         "mode": "insert_mode",
@@ -81,8 +92,14 @@ COMMENTS = {
     "transcribe": {
         "language": "ru, en или auto",
         "server_url": "локальный сервер распознавания (только 127.0.0.1)",
-        "server_command": "команда запуска сервера; пусто — найти run.sh автоматически",
+        "server_command": "своя команда вместо встроенного сервера; пусто — встроенный",
         "server_autostart": "поднимать сервер самому, если он не отвечает",
+    },
+    "model": {
+        "name": "модель для своего сервера: tiny, base, small, medium, large-v3-turbo, large-v3",
+        "device": "auto (CUDA, если видна), cuda или cpu",
+        "compute": "auto, float16 (GPU), int8 (CPU), int8_float16, float32",
+        "threads": "потоки CPU для своей модели; 0 — авто",
     },
     "insert": {
         "mode": "paste (буфер + Ctrl+V), type (посимвольно) или clipboard",
@@ -130,6 +147,10 @@ class Config:
     server_url: str = "http://127.0.0.1:8765"
     server_command: str = ""
     server_autostart: bool = True
+    model_name: str = DEFAULT_MODEL
+    model_device: str = "auto"
+    model_compute: str = "auto"
+    model_threads: int = 0
     insert_mode: str = "paste"
     restore_clipboard: bool = False
     restore_delay_ms: int = 1500
@@ -252,6 +273,19 @@ def _validate(cfg: Config) -> Config:
     if cfg.language not in LANGUAGES:
         log.warning("config: неизвестный язык %r, беру auto", cfg.language)
         changes["language"] = "auto"
+    if not cfg.model_name.strip():
+        log.warning("config: пустое имя модели, беру %s", DEFAULT_MODEL)
+        changes["model_name"] = DEFAULT_MODEL
+    if cfg.model_device not in MODEL_DEVICES:
+        log.warning("config: неизвестное устройство %r, беру auto", cfg.model_device)
+        changes["model_device"] = "auto"
+    if cfg.model_compute not in MODEL_COMPUTE:
+        log.warning("config: неизвестный compute %r, беру auto", cfg.model_compute)
+        changes["model_compute"] = "auto"
+    if cfg.model_threads < 0:
+        changes["model_threads"] = 0
+    elif cfg.model_threads > MAX_THREADS:
+        changes["model_threads"] = MAX_THREADS
     if cfg.log_level.upper() not in LOG_LEVELS:
         changes["log_level"] = "INFO"
     else:
@@ -345,9 +379,12 @@ def save(cfg: Config, path: Path | None = None) -> Path:
 
 
 def find_server_command() -> str | None:
-    """Найти run.sh существующего сервиса Whisper, чтобы не качать модель заново."""
+    """Старый способ: готовый run.sh рядом с данными приложения.
+
+    Встроенный сервер (`whisper-station server install`) теперь основной путь;
+    этот поиск оставлен для совместимости с прежними установками.
+    """
     candidates = [
-        Path.home() / "Documents" / "dsh-set" / ".whisper-local" / "run.sh",
         Path.home() / ".local" / "share" / "whisper-station" / "run.sh",
         Path.home() / ".config" / "whisper-station" / "run.sh",
     ]

@@ -27,6 +27,20 @@ from .settings_ui import SettingsDialog
 
 log = logging.getLogger(__name__)
 
+# Эти поля читаются сервером только при запуске: после их смены нужен рестарт.
+SERVER_FIELDS = (
+    "server_url",
+    "server_command",
+    "model_name",
+    "model_device",
+    "model_compute",
+    "model_threads",
+)
+
+
+def server_settings_changed(previous: Config, current: Config) -> bool:
+    return any(getattr(previous, name) != getattr(current, name) for name in SERVER_FIELDS)
+
 STATE_ICONS = {RECORDING: "recording", STARTING: "busy", TRANSCRIBING: "busy"}
 STATE_TITLES = {
     "idle": "готов",
@@ -312,15 +326,34 @@ class WhisperDictate(QObject):
             self._settings_dialog = None
 
     def _apply_settings(self, cfg: Config) -> None:
+        previous = self.cfg
         self.cfg = cfg
         self.controller.cfg = cfg
+        self.server.cfg = cfg
         save(cfg)
         autostart_mod.apply(cfg.autostart)
         self._sync_hud_rule()
         if not self._register_hotkey(force=True):
             self._notify("Настройки сохранены", "Но хоткей применить не удалось", "normal")
             return
+        if server_settings_changed(previous, cfg):
+            self._restart_server()
         self._notify("Настройки сохранены", f"Хоткей: {self._hotkey_text}", "low")
+
+    def _restart_server(self) -> None:
+        """Поднять сервер заново: модель и устройство читаются только при старте."""
+        self.server.cfg = self.cfg
+        if self.server.owned_pid is not None:
+            log.info("app: перезапускаю сервер под новые настройки модели")
+            self.server.stop_owned()
+            QTimer.singleShot(300, self.start_server)
+            return
+        self._check_server_async()
+        self._notify(
+            "Сервер не наш",
+            "Модель изменится после перезапуска сервера (его запустили не мы)",
+            "normal",
+        )
 
     def open_log(self) -> None:
         path = paths.log_file()

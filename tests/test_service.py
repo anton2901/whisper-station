@@ -132,9 +132,94 @@ class ServerManagerTest(unittest.TestCase):
         env = captured.get("env") or {}
         self.assertEqual(env.get("WHISPER_PARENT_PID"), str(os.getpid()))
 
+    def test_loading_server_is_not_spawned_twice(self) -> None:
+        cfg = Config(server_url="http://127.0.0.1:9")
+        manager = ServerManager(cfg)
+        loading = ServerStatus(False, error="loading: модель загружается", model="m")
+        with mock.patch.object(service, "health", return_value=loading):
+            with mock.patch.object(manager, "spawn") as spawn:
+                with self.assertRaises(ServerUnavailable):
+                    manager.ensure(timeout=0.3)
+        spawn.assert_not_called()
+
     def test_status_describe(self) -> None:
         self.assertIn("cuda", ServerStatus(ok=True, device="cuda", model="m").describe())
         self.assertIn("недоступен", ServerStatus(ok=False, error="нет").describe())
+
+
+class SpawnPlanTest(unittest.TestCase):
+    def test_builtin_plan_passes_model_settings(self) -> None:
+        cfg = Config(
+            model_name="small",
+            model_device="cpu",
+            model_compute="int8",
+            model_threads=4,
+            server_url="http://127.0.0.1:9999",
+        )
+        manager = ServerManager(cfg)
+        with mock.patch.object(service.server_env, "is_installed", return_value=True):
+            plan = manager.plan()
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertEqual(plan.argv[1:], ["-m", "whisper_station.server"])
+        self.assertEqual(plan.env["WHISPER_MODEL"], "small")
+        self.assertEqual(plan.env["WHISPER_DEVICE"], "cpu")
+        self.assertEqual(plan.env["WHISPER_COMPUTE"], "int8")
+        self.assertEqual(plan.env["WHISPER_THREADS"], "4")
+        self.assertEqual(plan.env["WHISPER_PORT"], "9999")
+        self.assertEqual(plan.env["WHISPER_PARENT_PID"], str(os.getpid()))
+        self.assertIn(str(service.app_root()), plan.env["PYTHONPATH"])
+
+    def test_custom_command_wins_over_builtin(self) -> None:
+        cfg = Config(server_command="/bin/true")
+        with mock.patch.object(service.server_env, "is_installed", return_value=True):
+            plan = ServerManager(cfg).plan()
+        assert plan is not None
+        self.assertEqual(plan.argv, ["/bin/true"])
+        self.assertNotIn("WHISPER_MODEL", plan.env)
+
+    def test_plan_none_without_server(self) -> None:
+        with mock.patch.object(service.server_env, "is_installed", return_value=False):
+            with mock.patch.object(service, "find_server_command", return_value=None):
+                self.assertIsNone(ServerManager(Config()).plan())
+
+    def test_legacy_run_sh_used_as_fallback(self) -> None:
+        with mock.patch.object(service.server_env, "is_installed", return_value=False):
+            with mock.patch.object(service, "find_server_command", return_value="/opt/run.sh"):
+                plan = ServerManager(Config()).plan()
+        assert plan is not None
+        self.assertEqual(plan.argv, ["/opt/run.sh"])
+
+    def test_spawn_after_plan_uses_env(self) -> None:
+        cfg = Config(model_name="base", server_url="http://127.0.0.1:9998")
+        manager = ServerManager(cfg)
+        captured: dict[str, object] = {}
+
+        class FakeProc:
+            pid = 1
+            returncode = None
+
+            def poll(self) -> None:
+                return None
+
+            def terminate(self) -> None:
+                self.returncode = 0
+
+            def wait(self, timeout: float | None = None) -> int:
+                return 0
+
+        def fake_popen(argv, **kwargs):  # noqa: ANN001, ANN003
+            captured["argv"] = argv
+            captured["env"] = kwargs.get("env")
+            return FakeProc()
+
+        with mock.patch.object(service.server_env, "is_installed", return_value=True):
+            with mock.patch.object(service.subprocess, "Popen", fake_popen):
+                manager.spawn()
+                manager.stop_owned()
+        env = captured.get("env") or {}
+        self.assertEqual(env.get("WHISPER_MODEL"), "base")
+        self.assertEqual(captured["argv"][1:], ["-m", "whisper_station.server"])
 
 
 if __name__ == "__main__":

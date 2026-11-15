@@ -61,19 +61,39 @@ class SystemdTest(unittest.TestCase):
 class ModelsTest(unittest.TestCase):
     def test_status_empty_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.dict("os.environ", {"WHISPER_DICTATE_MODELS": tmp}):
+            with mock.patch.dict("os.environ", {"WHISPER_STATION_MODELS": tmp}):
                 info = models.status()
         self.assertTrue(info["exists"])
+        self.assertEqual(info["installed"], [])
         self.assertEqual(info["files"], 0)
 
-    def test_status_counts_files(self) -> None:
+    def test_status_counts_installed_model(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
+            root = Path(tmp) / "small"
+            root.mkdir()
             (root / "model.bin").write_bytes(b"x" * 1024)
-            with mock.patch.dict("os.environ", {"WHISPER_DICTATE_MODELS": tmp}):
+            with mock.patch.dict("os.environ", {"WHISPER_STATION_MODELS": tmp}):
                 info = models.status()
-        self.assertEqual(info["files"], 1)
+                resolved = models.resolve("small")
+        self.assertEqual(info["installed"], ["small"])
+        self.assertEqual(info["sizes"]["small"], 1024)
         self.assertEqual(info["size_bytes"], 1024)
+        self.assertEqual(resolved, str(root))
+
+    def test_resolve_missing_model_uses_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict("os.environ", {"WHISPER_STATION_MODELS": tmp}):
+                self.assertEqual(models.resolve("small"), "small")
+                self.assertFalse(models.is_installed("small"))
+
+    def test_unknown_model_raises(self) -> None:
+        with self.assertRaises(models.ModelError):
+            models.repo_of("huge-v9")
+
+    def test_legacy_env_is_honoured(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict("os.environ", {"WHISPER_DICTATE_MODELS": tmp}):
+                self.assertEqual(models.models_dir(), Path(tmp))
 
     def test_download_script(self) -> None:
         script = models.download_script("owner/repo", Path("/tmp/models"))
@@ -85,6 +105,35 @@ class ModelsTest(unittest.TestCase):
         with mock.patch.object(models, "python_with_hub", return_value=None):
             with self.assertRaises(models.ModelError):
                 models.download()
+
+    def test_download_reports_missing_model_bin(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict("os.environ", {"WHISPER_STATION_MODELS": tmp}):
+                with mock.patch.object(models, "python_with_hub", return_value=Path("/bin/true")):
+                    with mock.patch.object(models, "_run_download", return_value=0):
+                        with self.assertRaises(models.ModelError):
+                            models.download("small")
+
+    def test_download_can_be_cancelled(self) -> None:
+        import threading
+
+        cancel = threading.Event()
+        cancel.set()
+
+        class FakeProc:
+            def poll(self) -> None:
+                return None
+
+            def terminate(self) -> None:
+                pass
+
+            def wait(self, timeout: float | None = None) -> int:
+                return 0
+
+        with mock.patch.object(models.subprocess, "Popen", return_value=FakeProc()):
+            with self.assertRaises(models.ModelError) as ctx:
+                models._run_download(["/bin/true"], cancel)
+        self.assertIn("отменена", str(ctx.exception))
 
 
 if __name__ == "__main__":

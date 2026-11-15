@@ -1,9 +1,10 @@
 # Maintainer: av <av@localhost>
 pkgname=whisper-station
-pkgver=0.3.1
+pkgver=0.4.0
 pkgrel=1
 pkgdesc="Локальная диктовка для KDE Plasma 6 / Wayland: хоткей, HUD, вставка текста"
 arch=('any')
+# TODO: заменить на адрес репозитория перед публикацией в AUR.
 url="https://example.invalid/whisper-station"
 license=('GPL-3.0-only')
 depends=(
@@ -18,6 +19,7 @@ depends=(
 )
 optdepends=(
   'ydotool: вставка через эмуляцию Ctrl+V (uinput)'
+  'python-pip: установка окружения сервера, если в Python нет ensurepip'
 )
 options=('!strip')
 
@@ -31,7 +33,9 @@ package() {
   local libdir="$pkgdir/usr/lib/$pkgname"
 
   install -dm755 "$libdir"
-  cp -a "$startdir/whisper_station" "$libdir/"
+  # -r, а не -a: владельца задаёт сам пакет, а сохранение owner из рабочего
+  # каталога ломается там, где fakeroot недоступен (CI, контейнеры).
+  cp -r "$startdir/whisper_station" "$libdir/"
   # Байткод не тащим в пакет: он пересоберётся при первом запуске.
   find "$libdir" -name '__pycache__' -type d -prune -exec rm -rf {} +
   # Репозиторий может иметь строгий umask (600/700) — в пакете права должны

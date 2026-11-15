@@ -19,6 +19,10 @@ from .config import Config, is_loopback_url
 log = logging.getLogger(__name__)
 
 ENDPOINT = "/v1/audio/transcriptions"
+# Подсказка модели (Whisper initial_prompt) из словаря: не больше 20 терминов,
+# иначе промпт начинает влиять на текст сильнее самой речи.
+PROMPT_MAX_WORDS = 20
+PROMPT_MAX_CHARS = 900
 
 # Whisper любит «додумывать» тишину и фоновую музыку целыми фразами.
 # Применяем только к коротким тихим записям, чтобы не съесть настоящую речь.
@@ -81,6 +85,12 @@ def build_multipart(
     return bytes(out)
 
 
+def dictionary_prompt(words: tuple[str, ...]) -> str:
+    """Собрать initial_prompt из словаря пользователя."""
+    picked = [word.strip() for word in words if word.strip()][:PROMPT_MAX_WORDS]
+    return ", ".join(picked)[:PROMPT_MAX_CHARS]
+
+
 def is_probable_hallucination(text: str) -> bool:
     """Похоже ли на «придуманную» Whisper фразу про субтитры/музыку."""
     normalized = " ".join(text.strip().lower().split())
@@ -127,8 +137,12 @@ def transcribe(
         raise SttError(f"Адрес {cfg.server_url} не локальный — отправка запрещена")
 
     boundary = f"----whisper-station-{uuid.uuid4().hex}"
+    fields = {"language": cfg.language, "response_format": "json"}
+    hint = dictionary_prompt(cfg.dictionary_words)
+    if hint:
+        fields["prompt"] = hint
     body = build_multipart(
-        fields={"language": cfg.language, "response_format": "json"},
+        fields=fields,
         files={"file": (filename, wav, "audio/wav")},
         boundary=boundary,
     )

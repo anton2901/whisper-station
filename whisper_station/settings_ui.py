@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import threading
+
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -18,6 +21,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QMessageBox,
+    QProgressDialog,
     QPushButton,
     QScrollArea,
     QSpinBox,
@@ -27,13 +32,17 @@ from PySide6.QtWidgets import (
 
 from . import APP_TITLE, __version__
 from . import autostart as autostart_mod
+from . import catalog, models, server_env
 from .config import (
     AUDIO_BACKENDS,
     HOTKEY_MODES,
     INSERT_MODES,
     LANGUAGES,
     MAX_RECORD_SECONDS,
+    MAX_THREADS,
     MAX_WORD_LENGTH,
+    MODEL_COMPUTE,
+    MODEL_DEVICES,
     PASTE_SHORTCUTS,
     Config,
 )
@@ -53,6 +62,18 @@ MODE_LABELS = {
     "clipboard": "Только буфер обмена",
 }
 LANGUAGE_LABELS = {"ru": "Русский", "en": "English", "auto": "Определять автоматически"}
+DEVICE_LABELS = {
+    "auto": "Авто: CUDA, если есть, иначе CPU",
+    "cuda": "CUDA (NVIDIA)",
+    "cpu": "CPU (без видеокарты)",
+}
+COMPUTE_LABELS = {
+    "auto": "Авто: float16 на GPU, int8 на CPU",
+    "float16": "float16 — быстрее на GPU",
+    "int8": "int8 — экономно на CPU",
+    "int8_float16": "int8_float16 — смешанный",
+    "float32": "float32 — точнее, медленнее",
+}
 
 
 class SettingsDialog(QDialog):
@@ -77,7 +98,9 @@ class SettingsDialog(QDialog):
 
         self._server_url = QLineEdit(cfg.server_url, self)
         self._server_command = QLineEdit(cfg.server_command, self)
-        self._server_command.setPlaceholderText("пусто — найти run.sh автоматически")
+        self._server_command.setPlaceholderText(
+            "пусто — встроенный сервер (whisper-station server install)"
+        )
         browse = QPushButton("Обзор…", self)
         browse.clicked.connect(self._browse_command)
         command_row = QHBoxLayout()
@@ -85,6 +108,32 @@ class SettingsDialog(QDialog):
         command_row.addWidget(browse)
         self._server_autostart = QCheckBox("Запускать сервер самому, если он не отвечает", self)
         self._server_autostart.setChecked(cfg.server_autostart)
+
+        self._model = QComboBox(self)
+        self._fill_models(cfg.model_name)
+        self._model.currentIndexChanged.connect(self._on_model_changed)
+        self._model_device = QComboBox(self)
+        for value in MODEL_DEVICES:
+            self._model_device.addItem(DEVICE_LABELS.get(value, value), value)
+        self._model_device.setCurrentIndex(max(0, self._model_device.findData(cfg.model_device)))
+        self._model_device.currentIndexChanged.connect(self._on_model_changed)
+        self._model_compute = QComboBox(self)
+        for value in MODEL_COMPUTE:
+            self._model_compute.addItem(COMPUTE_LABELS.get(value, value), value)
+        self._model_compute.setCurrentIndex(max(0, self._model_compute.findData(cfg.model_compute)))
+        self._model_threads = QSpinBox(self)
+        self._model_threads.setRange(0, MAX_THREADS)
+        self._model_threads.setSpecialValueText("авто")
+        self._model_threads.setSuffix(" потоков")
+        self._model_threads.setValue(cfg.model_threads)
+        self._model_hint = QLabel("", self)
+        self._model_hint.setWordWrap(True)
+        download = QPushButton("Скачать модель", self)
+        download.clicked.connect(self._download_model)
+        model_row = QHBoxLayout()
+        model_row.addWidget(self._model, 1)
+        model_row.addWidget(download)
+        self._on_model_changed()
 
         self._paste_shortcut = QComboBox(self)
         for value in PASTE_SHORTCUTS:
@@ -166,6 +215,7 @@ class SettingsDialog(QDialog):
         content_layout = QVBoxLayout(content)
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.addWidget(self._hotkey_group())
+        content_layout.addWidget(self._model_group(model_row))
         content_layout.addWidget(self._transcribe_group(command_row))
         content_layout.addWidget(self._insert_group())
         content_layout.addWidget(self._dictionary_group())
@@ -210,6 +260,26 @@ class SettingsDialog(QDialog):
         )
         hint.setWordWrap(True)
         form.addRow(hint)
+        return box
+
+    def _model_group(self, model_row: QHBoxLayout) -> QGroupBox:
+        box = QGroupBox("Модель распознавания", self)
+        layout = QVBoxLayout(box)
+        layout.addLayout(model_row)
+        form = QFormLayout()
+        form.addRow("Устройство:", self._model_device)
+        form.addRow("Расчёт:", self._model_compute)
+        form.addRow("Потоки CPU:", self._model_threads)
+        layout.addLayout(form)
+        if not server_env.is_installed():
+            hint = QLabel(
+                "Окружения сервера нет: выполните в терминале "
+                "«whisper-station server install», потом скачайте модель.",
+                box,
+            )
+            hint.setWordWrap(True)
+            layout.addWidget(hint)
+        layout.addWidget(self._model_hint)
         return box
 
     def _transcribe_group(self, command_row: QHBoxLayout) -> QGroupBox:
@@ -314,6 +384,91 @@ class SettingsDialog(QDialog):
         for item in self._words.selectedItems():
             self._words.takeItem(self._words.row(item))
 
+    # --- модель ---------------------------------------------------------
+    def _fill_models(self, current: str) -> None:
+        installed = set(models.installed_names())
+        self._model.blockSignals(True)
+        self._model.clear()
+        for info in catalog.CATALOG:
+            state = "скачана" if info.name in installed else "не скачана"
+            self._model.addItem(f"{info.name} — {info.size_label}, {state}", info.name)
+        if current and catalog.get(current) is None:
+            self._model.addItem(f"{current} (своя)", current)
+        index = self._model.findData(current)
+        self._model.setCurrentIndex(index if index >= 0 else 0)
+        self._model.blockSignals(False)
+
+    def _on_model_changed(self) -> None:
+        name = str(self._model.currentData() or "")
+        info = catalog.get(name)
+        installed = models.is_installed(name)
+        parts = [f"{name}: {'скачана' if installed else 'не скачана'}"]
+        if info is not None:
+            parts.append(f"{info.size_label}, {info.note}")
+        if not installed and info is not None:
+            parts.append(f"скачать — кнопка выше, ~{info.size_label}")
+        if str(self._model_device.currentData()) == "cpu" and info is not None and info.size_mb >= 1500:
+            parts.append("на CPU такая модель считается медленно — лучше small")
+        self._model_hint.setText("; ".join(parts))
+
+    def _download_model(self) -> None:
+        name = str(self._model.currentData() or "")
+        if not name:
+            return
+        if not server_env.is_installed():
+            QMessageBox.warning(
+                self,
+                "Модель",
+                "Сначала установите окружение сервера: whisper-station server install",
+            )
+            return
+        if models.is_installed(name):
+            QMessageBox.information(self, "Модель", f"{name} уже скачана")
+            return
+        problem = models.check_space(name)
+        if problem:
+            QMessageBox.warning(self, "Модель", problem)
+            return
+
+        cancel = threading.Event()
+        dialog = QProgressDialog(f"Скачиваю {name}…", "Отмена", 0, 0, self)
+        dialog.setWindowTitle("Модель")
+        dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        dialog.setMinimumDuration(0)
+        dialog.setAutoClose(False)
+        dialog.setAutoReset(False)
+        dialog.canceled.connect(cancel.set)
+        dialog.show()
+
+        done = threading.Event()
+        errors: list[str] = []
+
+        def worker() -> None:
+            try:
+                models.download(name, cancel=cancel)
+            except models.ModelError as exc:
+                errors.append(str(exc))
+            finally:
+                done.set()
+
+        threading.Thread(target=worker, name="whisper-model-download", daemon=True).start()
+
+        timer = QTimer(self)
+
+        def tick() -> None:
+            if not done.is_set():
+                return
+            timer.stop()
+            dialog.close()
+            if errors:
+                QMessageBox.critical(self, "Модель", errors[0])
+            else:
+                self._fill_models(name)
+                self._on_model_changed()
+
+        timer.timeout.connect(tick)
+        timer.start(300)
+
     def _check_server(self) -> None:
         status = health(self._server_url.text().strip())
         if status.ok:
@@ -332,6 +487,10 @@ class SettingsDialog(QDialog):
             server_url=self._server_url.text().strip() or self._cfg.server_url,
             server_command=self._server_command.text().strip(),
             server_autostart=self._server_autostart.isChecked(),
+            model_name=str(self._model.currentData() or self._cfg.model_name),
+            model_device=str(self._model_device.currentData()),
+            model_compute=str(self._model_compute.currentData()),
+            model_threads=int(self._model_threads.value()),
             insert_mode=str(self._mode.currentData()),
             restore_clipboard=self._restore_clipboard.isChecked(),
             restore_delay_ms=int(self._restore_delay.value()),

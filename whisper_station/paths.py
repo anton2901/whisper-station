@@ -21,6 +21,14 @@ def state_home() -> Path:
     return _env_path("XDG_STATE_HOME", Path.home() / ".local" / "state")
 
 
+def data_home() -> Path:
+    return _env_path("XDG_DATA_HOME", Path.home() / ".local" / "share")
+
+
+def data_dir() -> Path:
+    return data_home() / APP_NAME
+
+
 def runtime_dir() -> Path:
     return _env_path("XDG_RUNTIME_DIR", Path("/tmp"))
 
@@ -56,6 +64,19 @@ def ydotoold_socket() -> Path:
 
 def autostart_file() -> Path:
     return config_home() / "autostart" / f"{APP_NAME}.desktop"
+
+
+def server_venv_dir() -> Path:
+    """Отдельное окружение сервера: faster-whisper не тянем в системный Python."""
+    return data_dir() / "server-venv"
+
+
+def server_python() -> Path:
+    return server_venv_dir() / "bin" / "python"
+
+
+def models_dir() -> Path:
+    return data_dir() / "models"
 
 
 def ensure_dirs() -> None:

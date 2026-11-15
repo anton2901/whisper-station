@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "whisper-station"
-version = "0.3.1"
+version = "0.4.0"
 description = "Локальная диктовка для KDE Plasma 6 / Wayland: хоткей, HUD, вставка текста"
 requires-python = ">=3.12"
 license = { text = "GPL-3.0-only" }
@@ -18,4 +18,4 @@ dependencies = [
 whisper-station = "whisper_station.cli:main"
 
 [tool.setuptools]
-packages = ["whisper_station"]
+packages = ["whisper_station", "whisper_station.server"]

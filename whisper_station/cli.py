@@ -18,7 +18,7 @@ from . import ipc
 from .config import DEFAULT_HOTKEY, Config, dumps, load, save
 from .logsetup import configure as configure_logging
 from .recorder import available_backends, looks_like_wav
-from .service import ServerManager, health
+from .service import ServerManager, ServerStatus, health
 from .stt import SttError, transcribe
 
 DAEMON_COMMANDS = (
@@ -126,6 +126,7 @@ def cmd_status(cfg: Config) -> int:
 
 
 def cmd_doctor(cfg: Config) -> int:
+    from . import catalog, models, server_env
     from .hotkey import kglobalaccel_available, shortcut_to_int
     from .inject import check_environment
     from .textproc import describe_rules
@@ -133,8 +134,11 @@ def cmd_doctor(cfg: Config) -> int:
     env = check_environment()
     server = health(cfg.server_url)
     session_type = os.environ.get("XDG_SESSION_TYPE", "?")
-    command = ServerManager(cfg).command()
+    manager = ServerManager(cfg)
+    command = manager.command()
     kga = kglobalaccel_available()
+    env_ok = server_env.is_installed()
+    model_ok = models.is_installed(cfg.model_name)
     rows: list[tuple[str, str, bool]] = [
         ("сессия", f"{env['desktop'] or '?'} / {session_type}", bool(env["wayland"])),
         ("аудио", ", ".join(available_backends()) or "нет parec/pw-record", bool(available_backends())),
@@ -148,7 +152,20 @@ def cmd_doctor(cfg: Config) -> int:
         ),
         ("kglobalaccel", "есть" if kga else "нет", kga),
         ("сервер", server.describe(), server.ok),
+        ("устройство", f"в конфиге {cfg.model_device}, детект {catalog.detect_device()}", True),
         ("команда сервера", command or "не найдена", bool(command)),
+        (
+            "окружение",
+            "faster-whisper " + (server_env.faster_whisper_version() or "?")
+            if env_ok
+            else "не установлено — whisper-station server install",
+            env_ok or server.ok or bool(command),
+        ),
+        (
+            "модель",
+            _model_row_text(cfg.model_name, model_ok, server),
+            model_ok or server.ok,
+        ),
         ("текст", describe_rules(cfg), True),
         ("конфиг", str(paths.config_file()), paths.config_file().parent.exists()),
         ("лог", str(paths.log_file()), paths.log_file().parent.exists()),
@@ -175,6 +192,15 @@ def cmd_doctor(cfg: Config) -> int:
     return 0
 
 
+def _model_row_text(name: str, downloaded: bool, server: ServerStatus) -> str:
+    """Строка doctor про модель: своя на диске, чужая у сервера или нет совсем."""
+    if downloaded:
+        return f"{name}: скачана"
+    if server.ok:
+        return f"{name}: у сервера ({server.model or '?'} на {server.device or '?'})"
+    return f"{name}: не скачана — whisper-station model download --yes"
+
+
 def cmd_config(args: argparse.Namespace, cfg: Config) -> int:
     path = paths.config_file()
     if args.edit:
@@ -187,8 +213,21 @@ def cmd_config(args: argparse.Namespace, cfg: Config) -> int:
     return 0
 
 
-def cmd_model(args: argparse.Namespace) -> int:
-    from . import models
+def cmd_model(args: argparse.Namespace, cfg: Config) -> int:
+    from . import catalog, models, server_env
+
+    if args.action == "list":
+        installed = set(models.installed_names())
+        for info in catalog.CATALOG:
+            mark = "✓" if info.name in installed else " "
+            current = "*" if info.name == cfg.model_name else " "
+            print(f"{mark}{current} {info.describe()}")
+        print()
+        print(f"каталог: {models.models_dir()}")
+        print(f"в конфиге: {cfg.model_name}, устройство: {cfg.model_device}")
+        if not server_env.is_installed():
+            print("сервер не установлен: whisper-station server install")
+        return 0
 
     if args.action == "status":
         info = models.status()
@@ -197,8 +236,12 @@ def cmd_model(args: argparse.Namespace) -> int:
                 {
                     "path": str(info["path"]),
                     "exists": info["exists"],
-                    "files": info["files"],
-                    "size_mb": round(int(info["size_bytes"]) / 1_048_576, 1),
+                    "installed": info["installed"],
+                    "sizes": {name: size for name, size in info["sizes"].items()},
+                    "total_mb": round(int(info["size_bytes"]) / 1_048_576, 1),
+                    "configured": cfg.model_name,
+                    "device": cfg.model_device,
+                    "server_installed": server_env.is_installed(),
                     "python": str(models.python_with_hub() or "нет с huggingface_hub"),
                 },
                 ensure_ascii=False,
@@ -206,17 +249,110 @@ def cmd_model(args: argparse.Namespace) -> int:
             )
         )
         return 0
+
+    name = (args.name or cfg.model_name).strip()
+    if args.action == "remove":
+        if not args.yes:
+            print(f"Удалит {name} из {models.models_dir()}. Повторите с --yes")
+            return 1
+        if models.remove(name):
+            print(f"удалено: {name}")
+            return 0
+        print(f"{name} и так нет")
+        return 0
+
+    # download
     if not args.yes:
-        print(f"Скачает {models.DEFAULT_REPO} (около 1.6 ГБ) в {models.models_dir()}")
+        try:
+            repo = models.repo_of(name)
+        except models.ModelError as exc:
+            print(f"{APP_NAME}: {exc}", file=sys.stderr)
+            return 1
+        size = catalog.get(name).size_label if catalog.get(name) else "?"
+        print(f"Скачает {name} ({size}, {repo}) в {models.models_dir()}")
         print("Повторите с --yes, если это то, что нужно")
         return 1
+    problem = models.check_space(name)
+    if problem:
+        print(f"{APP_NAME}: {problem}", file=sys.stderr)
+        return 1
     try:
-        models.download(args.repo or models.DEFAULT_REPO)
+        if args.repo:
+            models.download_repo(args.repo, models.model_path(name))
+        else:
+            models.download(name)
     except models.ModelError as exc:
         print(f"{APP_NAME}: {exc}", file=sys.stderr)
         return 1
-    print(f"модель в {models.models_dir()}")
+    print(f"модель {name} в {models.model_path(name)}")
     return 0
+
+
+def cmd_server(args: argparse.Namespace, cfg: Config) -> int:
+    from . import models, server_env
+
+    if args.action == "status":
+        print(
+            json.dumps(
+                {
+                    "installed": server_env.is_installed(),
+                    "venv": str(server_env.venv_dir()),
+                    "python": str(server_env.python()),
+                    "faster_whisper": server_env.faster_whisper_version(),
+                    "size_mb": round(server_env.venv_size() / 1_048_576, 1),
+                    "model": cfg.model_name,
+                    "model_downloaded": models.is_installed(cfg.model_name),
+                    "device": cfg.model_device,
+                    "command": ServerManager(cfg).command(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
+    if args.action == "install":
+        if server_env.is_installed() and not args.force:
+            print(
+                f"окружение сервера уже есть: faster-whisper "
+                f"{server_env.faster_whisper_version() or '?'} ({server_env.python()})"
+            )
+            print("переустановить: whisper-station server install --force")
+            return 0
+        print(f"Ставлю окружение сервера в {server_env.venv_dir()} — это пара минут")
+        try:
+            version = server_env.install(args.python, force=args.force)
+        except server_env.InstallError as exc:
+            print(f"{APP_NAME}: {exc}", file=sys.stderr)
+            return 1
+        print(f"готово: faster-whisper {version}")
+        print(f"дальше: whisper-station model download --name {cfg.model_name} --yes")
+        return 0
+
+    if args.action == "uninstall":
+        if not args.yes:
+            print(f"Удалит {server_env.venv_dir()} (модели останутся). Повторите с --yes")
+            return 1
+        server_env.remove()
+        print("окружение сервера удалено")
+        return 0
+
+    # start
+    manager = ServerManager(cfg)
+    if not manager.builtin_ready() and not cfg.server_command.strip():
+        print(
+            f"{APP_NAME}: нет сервера. Сначала: whisper-station server install",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        status = manager.ensure(timeout=180.0)
+    except Exception as exc:  # noqa: BLE001 - текст показываем как есть
+        print(f"{APP_NAME}: {exc}", file=sys.stderr)
+        return 1
+    print(f"сервер отвечает: {status.describe()}")
+    return 0
+
 
 
 def cmd_systemd(args: argparse.Namespace, cfg: Config) -> int:
@@ -339,11 +475,21 @@ def build_parser() -> argparse.ArgumentParser:
     autostart_parser.add_argument("action", choices=("on", "off", "status"))
     autostart_parser.set_defaults(func=lambda args, _cfg: cmd_autostart(args))
 
-    model_parser = sub.add_parser("model", help="модель Whisper: наличие и скачивание")
-    model_parser.add_argument("action", choices=("status", "download"))
-    model_parser.add_argument("--repo", help="репозиторий HuggingFace")
-    model_parser.add_argument("--yes", action="store_true", help="подтвердить загрузку ~1.6 ГБ")
-    model_parser.set_defaults(func=lambda args, _cfg: cmd_model(args))
+    model_parser = sub.add_parser("model", help="модель Whisper: каталог, скачивание, удаление")
+    model_parser.add_argument("action", choices=("list", "status", "download", "remove"))
+    model_parser.add_argument("--name", help="имя модели из каталога")
+    model_parser.add_argument("--repo", help="свой репозиторий HuggingFace")
+    model_parser.add_argument(
+        "--yes", action="store_true", help="подтвердить скачивание или удаление"
+    )
+    model_parser.set_defaults(func=cmd_model)
+
+    server_parser = sub.add_parser("server", help="встроенный сервер распознавания")
+    server_parser.add_argument("action", choices=("install", "status", "start", "uninstall"))
+    server_parser.add_argument("--python", help="Python для venv (по умолчанию текущий)")
+    server_parser.add_argument("--force", action="store_true", help="пересоздать окружение")
+    server_parser.add_argument("--yes", action="store_true", help="подтвердить удаление")
+    server_parser.set_defaults(func=cmd_server)
 
     systemd_parser = sub.add_parser("systemd", help="user-юнит systemd вместо autostart")
     systemd_parser.add_argument("action", choices=("install", "enable", "disable", "status"))

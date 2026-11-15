@@ -229,3 +229,43 @@ class DictionaryConfigTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ModelConfigTest(unittest.TestCase):
+    def test_model_roundtrip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            original = cfgmod.Config(
+                model_name="small",
+                model_device="cpu",
+                model_compute="int8",
+                model_threads=6,
+            )
+            cfgmod.save(original, path)
+            parsed = tomllib.loads(path.read_text(encoding="utf-8"))
+            loaded = cfgmod.load(path)
+        self.assertEqual(parsed["model"]["name"], "small")
+        self.assertEqual(parsed["model"]["device"], "cpu")
+        self.assertEqual(loaded.model_name, "small")
+        self.assertEqual(loaded.model_device, "cpu")
+        self.assertEqual(loaded.model_compute, "int8")
+        self.assertEqual(loaded.model_threads, 6)
+
+    def test_model_garbage_falls_back(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "config.toml"
+            path.write_text(
+                '[model]\nname = ""\ndevice = "tpu"\ncompute = "fp8"\nthreads = 999\n',
+                encoding="utf-8",
+            )
+            cfg = cfgmod.load(path)
+        self.assertEqual(cfg.model_name, cfgmod.DEFAULT_MODEL)
+        self.assertEqual(cfg.model_device, "auto")
+        self.assertEqual(cfg.model_compute, "auto")
+        self.assertEqual(cfg.model_threads, cfgmod.MAX_THREADS)
+
+    def test_model_defaults(self) -> None:
+        cfg = cfgmod.Config()
+        self.assertEqual(cfg.model_name, cfgmod.DEFAULT_MODEL)
+        self.assertEqual(cfg.model_device, "auto")
+        self.assertEqual(cfg.model_threads, 0)
