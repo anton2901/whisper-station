@@ -4,14 +4,18 @@
 распознавание локальной моделью Whisper → текст в активном окне. Без облака и телеметрии:
 сеть только на `127.0.0.1`.
 
+![HUD во время записи](docs/hud-station.png)
+
 ## Что нужно
 
-Проверено на CachyOS (Arch-based), KDE Plasma 6.8, Wayland:
+Основной сценарий — CachyOS/Arch, KDE Plasma 6, Wayland (проверено на Plasma 6.8):
 
 - Python 3.12+ с `PySide6`, `dbus-python`, `PyGObject` (`pyside6 python-dbus python-gobject`);
 - `pipewire` (`pw-record`; `parec` — запасной вариант), `wl-clipboard`, `libnotify`;
-- сервер распознавания на `127.0.0.1:8765` (OpenAI-совместимый, faster-whisper);
-- `ydotool` и доступ к `/dev/uinput` — для вставки через Ctrl+V (на CachyOS ACL уже есть).
+- `ydotool` и доступ к `/dev/uinput` — для вставки через Ctrl+V (на CachyOS ACL уже есть);
+- сервер распознавания: приложение ставит его само в отдельное окружение
+  (`whisper-station server install`), модель качается командой `whisper-station model download`.
+  Интернет нужен только этим двум командам.
 
 Готовность проверить одной командой: `bin/whisper-station doctor`.
 
@@ -37,12 +41,18 @@ sudo pacman -U whisper-station-*.pkg.tar.zst
 ```
 
 Пакет кладёт код в `/usr/lib/whisper-station`, обёртку — в `/usr/bin/whisper-station`,
-`.desktop` и иконку — в `/usr/share`. После установки:
+`.desktop` и иконку — в `/usr/share`. Дальше — сервер и модель:
 
 ```sh
-whisper-station                    # запустить демон (трей)
-whisper-station autostart on       # автозапуск при входе
+whisper-station server install                     # venv + faster-whisper, ~2 минуты
+whisper-station model download --name small --yes   # 0.5 ГБ; для GPU — large-v3-turbo
+whisper-station doctor
+whisper-station                                     # демон (трей)
+whisper-station autostart on                        # автозапуск при входе
 ```
+
+Модель можно не качать заранее: при первом распознавании сервер скачает её сам.
+Отдельная команда нужна, чтобы видеть прогресс и выбрать размер осознанно.
 
 Автозапуск пишет `~/.config/autostart/whisper-station.desktop`
 (`Exec=/usr/bin/whisper-station daemon`).
@@ -80,14 +90,55 @@ whisper-station autostart on       # автозапуск при входе
 поэтому если вставка не сработала, продиктованный текст остаётся в буфере — его можно
 вставить вручную.
 
-Если сервер не запущен, приложение поднимет его само (`run.sh` из `.whisper-local`
-находится автоматически) и дождётся `/health`. Чужой сервер не убивается.
+Если сервер не запущен, приложение поднимет свой (`server install` → venv), дождётся
+`/health` и погасит его при выходе. Чужой сервер на порту не убивается и переиспользуется.
+
+## Модель и сервер
+
+Модель и устройство выбираются в настройках → «Модель распознавания» или в конфиге:
+
+```toml
+[model]
+name = "small"     # tiny, base, small, medium, large-v3-turbo, large-v3
+device = "auto"    # auto: CUDA, если видна, иначе CPU
+compute = "auto"   # auto: float16 на GPU, int8 на CPU
+threads = 0        # 0 — авто (ядра минус два)
+```
+
+| Модель | Размер | Для кого |
+|---|---|---|
+| `tiny` | 75 МБ | черновики, слабый ноутбук |
+| `base` | 145 МБ | простая речь |
+| `small` | 0.5 ГБ | **по умолчанию для CPU** |
+| `medium` | 1.5 ГБ | сильный CPU, качество выше |
+| `large-v3-turbo` | 1.6 ГБ | **по умолчанию для GPU** |
+| `large-v3` | 3.1 ГБ | максимум качества, нужна память |
+
+Без NVIDIA всё работает, но на CPU: `ctranslate2` не умеет Intel/AMD GPU, поэтому
+`device = "auto"` даёт CPU + `int8`. Замер на 10 потоках (2.4 с речи): `small` — ~1.0 с,
+`large-v3-turbo` — ~3.6 с, то есть на CPU большая модель считается медленнее
+реального времени. Берите `small` или `medium`. Смена модели в настройках
+перезапускает сервер (модель читается только при старте).
+
+Сервер — свой, в `~/.local/share/whisper-station/server-venv`:
+
+```sh
+whisper-station server install|status|start|uninstall
+whisper-station model list|status|download|remove
+```
+
+`/health` показывает загруженную модель и устройство, сервер сам выгружается после
+30 минут простоя (`WHISPER_IDLE_SECONDS`). Чужой сервер по-прежнему поддерживается:
+если он уже слушает порт, приложение его использует и не убивает, а свою команду
+запуска можно задать в `[transcribe] server_command`.
 
 ## Настройки
 
-`~/.config/whisper-station/config.toml` или окно «Настройки…» в трее: хоткей, язык,
-адрес и команда сервера, способ вставки (`paste`/`type`/`clipboard`), восстановление
-буфера, словарь терминов и чистка текста, автозапуск, звуковой сигнал, длительности записи.
+`~/.config/whisper-station/config.toml` или окно «Настройки…» в трее: хоткей, модель и
+устройство, язык, адрес и команда сервера, способ вставки (`paste`/`type`/`clipboard`),
+восстановление буфера, словарь терминов и чистка текста, автозапуск, звуковой сигнал,
+длительности записи. Словарь уходит в модель как `prompt` (до 20 терминов) и дополнительно
+правит текст после распознавания.
 
 Хоткей также виден в System Settings → Shortcuts → Whisper Station: менять можно там.
 Резервный вариант для любой сессии — назначить сочетание на команду `whisper-station toggle`.
@@ -95,18 +146,23 @@ whisper-station autostart on       # автозапуск при входе
 ## Команды
 
 `toggle`, `start`, `stop`, `cancel`, `repaste`, `settings`, `status`, `transcribe FILE`,
-`doctor`, `config`, `log`, `autostart on|off`, `model status|download`, `systemd install|enable|disable|status`,
+`doctor`, `config`, `log`, `autostart on|off`, `server install|status|start|uninstall`,
+`model list|status|download|remove`, `systemd install|enable|disable|status`,
 `service status|start`, `quit`, `daemon`.
 
 - `repaste` и пункт трея «Вставить последний текст» — повторная вставка последней диктовки.
-- `model status|download` — наличие модели и загрузка из HuggingFace (по `--yes`).
+- `server install` — окружение сервера (venv + faster-whisper), `model download` — модель
+  из HuggingFace; обе команды спрашивают подтверждение (`--yes`).
 - `systemd enable` — запуск через user-юнит с автоперезапуском; autostart при этом отключается.
 - Длительность записи: по умолчанию 5 минут, максимум 30 (`[audio] max_seconds`).
 
-## Ограничения Wayland (честно)
+## Ограничения (честно)
 
-- Хоткей работает через `org.kde.kglobalaccel` — проверено на Plasma 6.8 (KWin).
-  XDG-портал `GlobalShortcuts` не используется.
+- Пока это KDE-приложение: хоткей работает через `org.kde.kglobalaccel` — проверено на
+  Plasma 6.8 (KWin), XDG-портал `GlobalShortcuts` не используется. На GNOME/Hyprland
+  назначьте `whisper-station toggle` на клавишу вручную — остальное заработает.
+- X11 не поддерживается: запись и вставка построены на PipeWire и `wl-copy`.
+- GPU только NVIDIA: `ctranslate2` не поддерживает Intel/AMD, там будет CPU.
 - HUD на время записи забирает фокус (KWin не даёт клавиатуру окну без фокуса, иначе
   не работают Esc и кнопки). Перед вставкой HUD прячется, фокус возвращается в окно.
 - Позиция HUD задаётся правилом KWin «Whisper Station HUD» (верх экрана по центру):
@@ -123,14 +179,16 @@ whisper-station autostart on       # автозапуск при входе
 ## Удаление
 
 ```sh
+whisper-station server uninstall --yes     # окружение сервера
 sudo pacman -R whisper-station
-rm -rf ~/.config/whisper-station ~/.local/state/whisper-station
+rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/whisper-station
 ```
 
 ## Бренд
 
 Иконка и палитра — в `brand/`: мастер `brand/app.svg`, экспорты, трей для светлой
 и тёмной панели, контактный лист `brand/board.png` и `brand/style-tile.html`.
+Характер, типографика, правила HUD и голос интерфейса — [docs/DESIGN.md](docs/DESIGN.md).
 Пересобрать: `python3 brand/make_board.py`. Иконка пакета совпадает с бренд-мастером
 (это проверяет тест).
 
