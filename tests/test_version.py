@@ -12,16 +12,14 @@ from whisper_station import __version__
 ROOT = Path(__file__).resolve().parent.parent
 
 
-class BrandTest(unittest.TestCase):
-    def test_packaging_icon_matches_brand_master(self) -> None:
-        brand = (ROOT / "brand" / "app.svg").read_text(encoding="utf-8")
-        shipped = (ROOT / "packaging" / "whisper-station.svg").read_text(encoding="utf-8")
-        self.assertEqual(brand, shipped, "иконка в пакете разошлась с бренд-мастером")
-
-    def test_brand_files_exist(self) -> None:
-        for name in ("README.md", "board.png", "tray.svg", "style-tile.html",
-                     "app-512.png", "tray-light-22.png", "tray-dark-22.png"):
-            self.assertTrue((ROOT / "brand" / name).is_file(), name)
+class PackagingTest(unittest.TestCase):
+    def test_icon_and_desktop_shipped(self) -> None:
+        icon = ROOT / "packaging" / "whisper-station.svg"
+        desktop = ROOT / "packaging" / "whisper-station.desktop"
+        self.assertTrue(icon.is_file(), "нет иконки в packaging/")
+        self.assertTrue(desktop.is_file(), "нет .desktop в packaging/")
+        self.assertIn("<svg", icon.read_text(encoding="utf-8"))
+        self.assertIn("Exec=whisper-station", desktop.read_text(encoding="utf-8"))
 
 
 class VersionTest(unittest.TestCase):

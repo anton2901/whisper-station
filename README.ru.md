@@ -205,18 +205,15 @@ rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/w
 Настройки версий до 0.3 лежат в `~/.config/whisper-dictate` и переносятся при запуске;
 удалите и его, если нужен полностью чистый старт.
 
-## Бренд и документы
+## Документы
 
-Иконка и палитра — в `brand/`: мастер `brand/app.svg`, экспорты, трей для светлой
-и тёмной панели, контактный лист `brand/board.png` и `brand/style-tile.html`.
-Характер, типографика, правила HUD и голос интерфейса — [docs/DESIGN.md](docs/DESIGN.md).
-Пересобрать: `python3 brand/make_board.py`. Скриншоты для README:
-`QT_QPA_PLATFORM=offscreen python3 tools/screenshots.py`.
+Иконка, которая ставится пакетом, — `packaging/whisper-station.svg`. Характер,
+типографика, правила HUD и голос интерфейса — [docs/DESIGN.md](docs/DESIGN.md).
+Скриншоты для README: `QT_QPA_PLATFORM=offscreen python3 tools/screenshots.py`.
 
 Архитектура и решения — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 [docs/DECISIONS.md](docs/DECISIONS.md), проверки — [docs/VERIFICATION.md](docs/VERIFICATION.md),
-план — [docs/ROADMAP.md](docs/ROADMAP.md), разбор Handy —
-[docs/HANDY-ANALYSIS.md](docs/HANDY-ANALYSIS.md), публикация — [docs/RELEASE.md](docs/RELEASE.md),
+план — [docs/ROADMAP.md](docs/ROADMAP.md), публикация — [docs/RELEASE.md](docs/RELEASE.md),
 вклад — [CONTRIBUTING.ru.md](CONTRIBUTING.ru.md). Глубокие документы по дизайну пока
 по-русски; английская версия — только эта страница и `CONTRIBUTING.md`.
 

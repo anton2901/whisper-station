@@ -213,17 +213,14 @@ rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/w
 Settings from the pre-0.3 versions live in `~/.config/whisper-dictate` and are migrated on
 start; delete that directory too if you want a clean state.
 
-## Brand and docs
+## Docs
 
-The icon and palette live in `brand/`: the master `brand/app.svg`, exports, tray icons for
-light and dark panels, the contact sheet `brand/board.png` and `brand/style-tile.html`.
-Character, typography, HUD rules and the interface voice are described in
-[docs/DESIGN.md](docs/DESIGN.md) (Russian). Rebuild with `python3 brand/make_board.py`.
+The shipped icon is `packaging/whisper-station.svg`; character, typography, HUD rules and
+the interface voice are described in [docs/DESIGN.md](docs/DESIGN.md) (Russian).
 
 Architecture and decisions — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
 [docs/DECISIONS.md](docs/DECISIONS.md), checks — [docs/VERIFICATION.md](docs/VERIFICATION.md),
-plan — [docs/ROADMAP.md](docs/ROADMAP.md), the Handy breakdown —
-[docs/HANDY-ANALYSIS.md](docs/HANDY-ANALYSIS.md), publishing —
+plan — [docs/ROADMAP.md](docs/ROADMAP.md), publishing —
 [docs/RELEASE.md](docs/RELEASE.md), contributing — [CONTRIBUTING.md](CONTRIBUTING.md).
 Deep design documents are kept in Russian for now.
 

@@ -20,8 +20,10 @@ src/
 .idea/
 .vscode/
 
-# Генерируемое Archify
-.archify/**/visual-check/
+# Внутренние материалы: остаются локально, в репозиторий не попадают
+/.archify/
+/brand/
+/docs/HANDY-ANALYSIS.md
 
 # Локальное
 .env
