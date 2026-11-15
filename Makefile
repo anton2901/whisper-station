@@ -35,8 +35,8 @@ package:
 # остаётся нажать Publish.
 release:
 	@test -z "$$(git status --porcelain)" || { echo "Сначала закоммитьте изменения"; exit 1; }
-	@git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null && { \
-		echo "Тег v$(VERSION) уже есть: поднимите версию в pyproject.toml/PKGBUILD"; exit 1; }
+	@if git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null; then \
+		echo "Тег v$(VERSION) уже есть: поднимите версию в pyproject.toml/PKGBUILD"; exit 1; fi
 	$(MAKE) lint test
 	git tag -a "v$(VERSION)" -m "whisper-station $(VERSION)"
 	git push origin "v$(VERSION)"
