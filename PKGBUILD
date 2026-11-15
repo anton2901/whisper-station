@@ -59,6 +59,8 @@ WRAPPER
     "$pkgdir/usr/share/$pkgname/sounds/"
   install -Dm644 "$startdir/README.md" \
     "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 "$startdir/README.ru.md" \
+    "$pkgdir/usr/share/doc/$pkgname/README.ru.md"
   install -Dm644 "$startdir/LICENSE" \
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

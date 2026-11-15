@@ -1,42 +1,46 @@
-# Участие в проекте
+# Contributing
 
-Проект маленький и однопользовательский: проще всего — форк, ветка, pull request.
-Перед PR обязательно `make lint && make test` (красные тесты не мержим).
+[English](CONTRIBUTING.md) | [Русский](CONTRIBUTING.ru.md)
 
-## Стек и правила
+The project is small: fork, branch, pull request. Before a PR run
+`make lint && make test` — red tests are not merged.
 
-- Python 3.12+, PySide6, `dbus-python`, PyGObject. Новые зависимости — только после
-  согласия мейнтейнера: стандартная библиотека предпочтительнее.
-- Код, имена и **коммиты** — по-английски; документация, README и тексты интерфейса — по-русски.
-- `print()` только в `cli.py` и `app.py`, иначе `logging`.
-- Сеть — только на `127.0.0.1` (адрес сервера проверяется в `config.is_loopback_url`).
-- `.whisper-local/**` не трогаем: это чужой сервис, его можно только переиспользовать.
-- Тесты лежат в `tests/`, рядом с кодом их не создаём.
+## Stack and rules
 
-## Как запустить и проверить
+- Python 3.12+, PySide6, `dbus-python`, PyGObject. New dependencies only with the
+  maintainer's agreement: the standard library is preferred.
+- Code, names and **commits** in English; documentation, README and interface texts in
+  Russian (English README is the GitHub landing page).
+- `print()` only in `cli.py` and `app.py`, otherwise `logging`.
+- Network only to `127.0.0.1` (the server address is checked in `config.is_loopback_url`).
+- Do not touch `.whisper-local/**`: it is a foreign service, reuse only.
+- Tests live in `tests/`; do not create them next to the code.
+
+## Run and check
 
 ```sh
-make run        # демон из репозитория
-make test       # unittest, без внешних пакетов
-make lint       # мини-линтер (синтаксис, длина строк, импорты, print)
-make doctor     # окружение: хоткей, вставка, сервер, модель
+make run        # daemon from the repository
+make test       # unittest, no external packages
+make lint       # mini-linter (syntax, line length, imports, print)
+make doctor     # environment: hotkey, insertion, server, model
 ```
 
-Ветку проверяем на живой KDE-сессии: хоткей, HUD, Esc, вставка в обычное окно и терминал.
+Verify behaviour on a live KDE session: hotkey, HUD, Esc, insertion into a normal window
+and into a terminal.
 
-## Что приложить к issue
+## What to attach to an issue
 
-- `whisper-station doctor` (весь вывод);
+- `whisper-station doctor` (full output);
 - `whisper-station server status`;
-- хвост `~/.local/state/whisper-station/app.log`;
-- версия: `whisper-station --version`, дистрибутив, версия Plasma/Wayland.
+- the tail of `~/.local/state/whisper-station/app.log`;
+- versions: `whisper-station --version`, distribution, Plasma/Wayland version.
 
-## Куда что добавлять
+## Where to add what
 
-| Задача | Файл |
+| Task | File |
 |---|---|
-| новая модель в каталог | `whisper_station/catalog.py` (имя, репозиторий HF, размер) |
-| новая настройка | `whisper_station/config.py` (поле + `SECTIONS` + `COMMENTS` + валидация) |
-| поведение при вставке | `whisper_station/inject.py` + тесты в `tests/test_inject.py` |
-| сервер/эндпоинты | `whisper_station/server/` + `tests/test_server.py` |
-| документация | `docs/`, один экран на документ |
+| a new model in the catalog | `whisper_station/catalog.py` (name, HF repository, size) |
+| a new setting | `whisper_station/config.py` (field + `SECTIONS` + `COMMENTS` + validation) |
+| insertion behaviour | `whisper_station/inject.py` + `tests/test_inject.py` |
+| server/endpoints | `whisper_station/server/` + `tests/test_server.py` |
+| documentation | `docs/`, one screen per document |

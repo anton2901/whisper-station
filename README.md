@@ -1,232 +1,226 @@
 # whisper-station
 
-Локальная диктовка для KDE Plasma 6 / Wayland: глобальный хоткей → запись микрофона →
-распознавание локальной моделью Whisper → текст в активном окне. Без облака и телеметрии:
-сеть только на `127.0.0.1`.
+[English](README.md) | [Русский](README.ru.md)
 
-*Local dictation for KDE Plasma 6 on Wayland: a global hotkey, on-device Whisper,
-text into the active window. No cloud, loopback only. Tested on CachyOS/Arch only.*
+On-device dictation for KDE Plasma 6 on Wayland: a global hotkey → microphone → local
+Whisper model → text into the active window. No cloud, no telemetry: the only network
+traffic is `127.0.0.1`.
 
-**Статус:** 0.4.0, публикуется как инструмент для **CachyOS/Arch + KDE Plasma 6 + Wayland**.
-Другие дистрибутивы и GNOME/Hyprland не проверялись; X11 не поддерживается.
+**Status:** 0.4.0, published as a **CachyOS/Arch + KDE Plasma 6 + Wayland** tool.
+Other distributions and GNOME/Hyprland are untested; X11 is not supported.
 
-![HUD во время записи](docs/hud-station.png)
+![HUD while recording](docs/screenshot-hud.png)
 
-## Что нужно
+## Features
 
-Основной сценарий — CachyOS/Arch, KDE Plasma 6, Wayland (проверено на Plasma 6.8):
+- **Global hotkey** through `org.kde.kglobalaccel` with both press and release:
+  toggle mode and push-to-talk.
+- **HUD** with a waveform, a timer, live preview of the recognition and an `Esc` cancel;
+  the window is placed on top by a KWin window rule.
+- **Text after recognition**: custom dictionary with fuzzy matching, filler removal,
+  stutter collapsing, trailing space. The dictionary is also sent to the model as
+  `initial_prompt`.
+- **Insertion** through the clipboard and an emulated paste (`ydotool` over `uinput`),
+  `Ctrl+V` or `Ctrl+Shift+V` for terminals, optional clipboard restore, `type` and
+  `clipboard` modes.
+- **Built-in recognition server** (faster-whisper) in a dedicated venv, a catalog of six
+  models, CUDA or CPU (`int8`), idle unload. A foreign server on the same port is reused
+  and never killed.
+- **Tray, settings, autostart, systemd user unit, `doctor`, CLI.**
 
-- Python 3.12+ с `PySide6`, `dbus-python`, `PyGObject` (`pyside6 python-dbus python-gobject`);
-- `pipewire` (`pw-record`; `parec` — запасной вариант), `wl-clipboard`, `libnotify`;
-- `ydotool` и доступ к `/dev/uinput` — для вставки через Ctrl+V (на CachyOS ACL уже есть);
-- сервер распознавания: приложение ставит его само в отдельное окружение
-  (`whisper-station server install`), модель качается командой `whisper-station model download`.
-  Интернет нужен только этим двум командам.
+## Requirements
 
-Готовность проверить одной командой: `bin/whisper-station doctor`.
+The primary target is CachyOS/Arch, KDE Plasma 6, Wayland (tested on Plasma 6.8):
 
-## Запуск из репозитория
+- Python 3.12+ with `PySide6`, `dbus-python`, `PyGObject`;
+- `pipewire` (`pw-record`; `parec` is a fallback), `wl-clipboard`, `libnotify`;
+- `ydotool` and access to `/dev/uinput` — for pasting with `Ctrl+V` (on CachyOS the ACL
+  is already in place);
+- the recognition server is installed by the app itself into a separate environment;
+  the model is downloaded on demand. Only these two steps need the network.
+
+Check everything with one command: `bin/whisper-station doctor`.
+
+## Install
+
+### One command
 
 ```sh
-make test        # юнит-тесты (unittest, без внешних пакетов)
-make lint        # мини-линтер (синтаксис, стиль, импорты)
-make run         # демон с иконкой в трее (передний план)
-make doctor      # проверка окружения: хоткей, вставка, сервер
-```
-
-Второй экземпляр не запускается: демон держит UNIX-сокет в `$XDG_RUNTIME_DIR`.
-
-> Приложение раньше называлось `whisper-dictate`. Настройки из
-> `~/.config/whisper-dictate/config.toml` переносятся автоматически при первом запуске.
-
-## Установка
-
-### Одной командой
-
-```sh
-git clone <адрес репозитория> whisper-station
+git clone <repository-url> whisper-station
 cd whisper-station
 ./install.sh
 ```
 
-Скрипт идемпотентен: ставит зависимости, собирает и устанавливает пакет, ставит
-окружение сервера (с CUDA, если есть NVIDIA), скачивает подходящую модель
-(`large-v3-turbo` для GPU, `small` для CPU), включает автозапуск и в конце запускает
-`doctor`. Ничего не меняя, посмотреть план: `./install.sh --dry-run`. Варианты:
-`--cpu` (без CUDA), `--model medium`, `--no-autostart`, `-y` (не спрашивать).
+The script is idempotent: it installs the dependencies, builds and installs the package,
+sets up the server environment (with CUDA when an NVIDIA GPU is present), downloads the
+model that fits the device (`large-v3-turbo` for GPU, `small` for CPU), enables autostart
+and finally runs `doctor`. Preview without touching anything: `./install.sh --dry-run`.
+Options: `--cpu`, `--model medium`, `--no-autostart`, `-y`.
 
-### Вручную
+### Manual
 
 ```sh
-# зависимости (если ещё не стоят)
+# dependencies (if not installed yet)
 sudo pacman -S --needed pyside6 python-dbus python-gobject pipewire wl-clipboard libnotify ydotool
 
-makepkg -sf                      # собрать; -s доставит недостающие зависимости
+makepkg -sf                      # build; -s installs missing dependencies
 sudo pacman -U whisper-station-*.pkg.tar.zst
 ```
 
-Пакет кладёт код в `/usr/lib/whisper-station`, обёртку — в `/usr/bin/whisper-station`,
-`.desktop` и иконку — в `/usr/share`. Дальше — сервер и модель:
+The package puts the code into `/usr/lib/whisper-station`, the wrapper into
+`/usr/bin/whisper-station`, the `.desktop` file and the icon into `/usr/share`.
+Then the server and the model:
 
 ```sh
-whisper-station server install                     # venv + faster-whisper, ~2 минуты
-# для NVIDIA добавьте CUDA-библиотеки (иначе будет CPU):
-whisper-station server install --cuda              # ~1.4 ГБ колёс cuBLAS/cuDNN
-whisper-station model download --name small --yes   # 0.5 ГБ; для GPU — large-v3-turbo
+whisper-station server install                     # venv + faster-whisper, ~2 minutes
+# for NVIDIA add the CUDA libraries (otherwise CPU is used):
+whisper-station server install --cuda              # ~1.4 GB of cuBLAS/cuDNN wheels
+whisper-station model download --name small --yes   # 0.5 GB; for GPU — large-v3-turbo
 whisper-station doctor
-whisper-station                                     # демон (трей)
-whisper-station autostart on                        # автозапуск при входе
+whisper-station                                     # the daemon (tray)
+whisper-station autostart on                        # start at login
 ```
 
-Модель можно не качать заранее: при первом распознавании сервер скачает её сам.
-Отдельная команда нужна, чтобы видеть прогресс и выбрать размер осознанно.
+The model does not have to be downloaded in advance: the server downloads it on the first
+recognition. The explicit command exists so that you see the progress and pick the size
+deliberately.
 
-Автозапуск пишет `~/.config/autostart/whisper-station.desktop`
-(`Exec=/usr/bin/whisper-station daemon`).
+## Usage
 
-## Как пользоваться
+1. Start `whisper-station` (tray) — or enable autostart in the settings.
+2. Press `Meta+Alt+D`, speak, press it again. A compact HUD with a waveform and a timer
+   appears.
+3. The text is recognized and inserted into the active window (clipboard + `Ctrl+V`).
+4. `Esc` in the HUD cancels without insertion; the "Стоп"/"Отмена" buttons do the same.
 
-1. Запустите `whisper-station` (трей) — или включите автозапуск в настройках.
-2. Нажмите `Meta+Alt+D`, говорите, нажмите ещё раз. Появится компактный HUD
-   с осциллограммой голоса и таймером.
-3. Текст распознаётся и вставляется в активное окно (буфер + Ctrl+V).
-4. `Esc` в HUD — отмена без вставки; кнопки «Стоп»/«Отмена» делают то же самое.
+Two hotkey modes (settings → "Хоткей" → "Режим"):
 
-Два режима хоткея (настройки → «Хоткей» → «Режим»):
+- **Toggle** (default): press — speak — press again to stop and insert.
+- **Push-to-talk**: hold the key while speaking, release to stop and insert. A release
+  shorter than 0.35 s is treated as an accidental tap and simply cancels.
 
-- **Переключение** (по умолчанию): нажал — говоришь, нажал — стоп и вставка.
-- **Удержание** (push-to-talk): держишь клавишу, пока говоришь, отпускаешь — стоп и вставка.
-  Отпускание короче 0.35 с считается случайным тапом и просто отменяется.
+Live preview (on by default): while recording, the recognized text scrolls through the HUD,
+but only the final text goes into the window. Turn it off in the settings or with
+`[preview] live = false`.
 
-В конфиге: `[hotkey] mode = "toggle"` или `mode = "press"`.
+In terminals use **Ctrl+Shift+V** instead of `Ctrl+V`: switch "Сочетание вставки" in the
+settings when dictating into a console. The clipboard is **not** restored by default, so
+if the insertion failed the dictated text stays in the clipboard and can be pasted manually.
 
-Живой предпросмотр (включён по умолчанию): пока идёт запись, распознанный текст
-бегущей строкой показывается в HUD, но в окно попадает только после остановки.
-Выключить — галочка в настройках или `[preview] live = false`.
+If the server is not running, the app starts its own (`server install` → venv), waits for
+`/health` and stops it on exit. A foreign server on the port is never killed and is reused.
 
-Словарь и чистка текста: в настройках → «Словарь и текст» добавьте свои термины и
-имена — похожие слова исправляются после распознавания (нечёткое совпадение,
-порог 0.18). Там же убираются филлеры «ээ/ммм/uh/hmm», схлопываются повторы
-«я я я» и включается пробел в конце вставки. Сервер Whisper подсказки не принимает,
-поэтому словарь — пост-коррекция. В конфиге: `[dictionary] words = [...]`,
-`threshold = 0.18`; `[text] remove_fillers`, `collapse_stutters`, `trailing_space`,
-`fillers` (свой список заменяет встроенный).
+## Model and server
 
-В терминалах вставка — **Ctrl+Shift+V**, а не Ctrl+V: переключите «Сочетание вставки»
-в настройках, когда диктуете в консоль. Буфер по умолчанию **не восстанавливается**,
-поэтому если вставка не сработала, продиктованный текст остаётся в буфере — его можно
-вставить вручную.
-
-Если сервер не запущен, приложение поднимет свой (`server install` → venv), дождётся
-`/health` и погасит его при выходе. Чужой сервер на порту не убивается и переиспользуется.
-
-## Модель и сервер
-
-Модель и устройство выбираются в настройках → «Модель распознавания» или в конфиге:
+Model and device are chosen in settings → "Модель распознавания" or in the config:
 
 ```toml
 [model]
 name = "small"     # tiny, base, small, medium, large-v3-turbo, large-v3
-device = "auto"    # auto: CUDA, если видна, иначе CPU
-compute = "auto"   # auto: float16 на GPU, int8 на CPU
-threads = 0        # 0 — авто (ядра минус два)
+device = "auto"    # auto: CUDA when visible, otherwise CPU
+compute = "auto"   # auto: float16 on GPU, int8 on CPU
+threads = 0        # 0 — automatic (cores minus two)
 ```
 
-| Модель | Размер | Для кого |
+| Model | Size | For whom |
 |---|---|---|
-| `tiny` | 75 МБ | черновики, слабый ноутбук |
-| `base` | 145 МБ | простая речь |
-| `small` | 0.5 ГБ | **по умолчанию для CPU** |
-| `medium` | 1.5 ГБ | сильный CPU, качество выше |
-| `large-v3-turbo` | 1.6 ГБ | **по умолчанию для GPU** |
-| `large-v3` | 3.1 ГБ | максимум качества, нужна память |
+| `tiny` | 75 MB | drafts, weak laptops |
+| `base` | 145 MB | simple speech |
+| `small` | 0.5 GB | **default for CPU** |
+| `medium` | 1.5 GB | strong CPU, better quality |
+| `large-v3-turbo` | 1.6 GB | **default for GPU** |
+| `large-v3` | 3.1 GB | maximum quality, needs memory |
 
-Без NVIDIA всё работает, но на CPU: `ctranslate2` не умеет Intel/AMD GPU, поэтому
-`device = "auto"` даёт CPU + `int8`. Замер на 10 потоках (2.4 с речи): `small` — ~1.0 с,
-`large-v3-turbo` — ~3.6 с, то есть на CPU большая модель считается медленнее
-реального времени. Берите `small` или `medium`. Смена модели в настройках
-перезапускает сервер (модель читается только при старте).
+Everything works without NVIDIA, but on CPU: `ctranslate2` does not support Intel/AMD GPUs,
+so `device = "auto"` gives CPU + `int8`. Measured on 10 threads (2.4 s of speech): `small`
+— ~1.0 s, `large-v3-turbo` — ~3.6 s, i.e. the big model is slower than real time on CPU.
+Use `small` or `medium`. On an RTX 3060 (`float16`) the same phrase takes **276 ms**.
 
-Для NVIDIA серверу нужны cuBLAS и cuDNN версии 12/9 — системных обычно нет, поэтому
-`server install --cuda` доставляет их колёсами NVIDIA в venv. Если библиотек нет,
-сервер не падает: при старте делает пробный прогон, уходит на CPU и пишет причину
-в `/health` (`fallback`). Замер на RTX 3060: 311 мс на 2.4 с речи (float16).
+NVIDIA needs cuBLAS and cuDNN 12/9, which usually are not installed system-wide, so
+`server install --cuda` puts the NVIDIA wheels into the venv. If they are missing the
+server does not crash: it warms the model up on start, falls back to CPU and reports the
+reason in `/health` (`fallback`).
 
-Сервер — свой, в `~/.local/share/whisper-station/server-venv`:
+The server lives in `~/.local/share/whisper-station/server-venv`:
 
 ```sh
 whisper-station server install|status|start|uninstall
 whisper-station model list|status|download|remove
 ```
 
-`/health` показывает загруженную модель и устройство, сервер сам выгружается после
-30 минут простоя (`WHISPER_IDLE_SECONDS`). Чужой сервер по-прежнему поддерживается:
-если он уже слушает порт, приложение его использует и не убивает, а свою команду
-запуска можно задать в `[transcribe] server_command`.
+`/health` shows the loaded model and device; the server unloads itself after 30 minutes of
+idle time (`WHISPER_IDLE_SECONDS`). A custom server is still supported: if it already
+listens on the port the app uses it, and its own start command can be set in
+`[transcribe] server_command`.
 
-## Настройки
+## Settings
 
-`~/.config/whisper-station/config.toml` или окно «Настройки…» в трее: хоткей, модель и
-устройство, язык, адрес и команда сервера, способ вставки (`paste`/`type`/`clipboard`),
-восстановление буфера, словарь терминов и чистка текста, автозапуск, звуковой сигнал,
-длительности записи. Словарь уходит в модель как `prompt` (до 20 терминов) и дополнительно
-правит текст после распознавания.
+`~/.config/whisper-station/config.toml` or the "Настройки…" window in the tray: hotkey,
+model and device, language, server address and command, insertion mode
+(`paste`/`type`/`clipboard`), clipboard restore, dictionary and text cleanup, autostart,
+sound, recording limits. The dictionary is sent to the model as `prompt` (up to 20 terms)
+and additionally corrects the text after recognition.
 
-Хоткей также виден в System Settings → Shortcuts → Whisper Station: менять можно там.
-Резервный вариант для любой сессии — назначить сочетание на команду `whisper-station toggle`.
+The hotkey is also visible in System Settings → Shortcuts → Whisper Station and can be
+changed there. A fallback for any session: bind a key to `whisper-station toggle`.
 
-## Команды
+![Settings window](docs/screenshot-settings.png)
+
+## Commands
 
 `toggle`, `start`, `stop`, `cancel`, `repaste`, `settings`, `status`, `transcribe FILE`,
 `doctor`, `config`, `log`, `autostart on|off`, `server install|status|start|uninstall`,
 `model list|status|download|remove`, `systemd install|enable|disable|status`,
 `service status|start`, `quit`, `daemon`.
 
-- `repaste` и пункт трея «Вставить последний текст» — повторная вставка последней диктовки.
-- `server install` — окружение сервера (venv + faster-whisper), `model download` — модель
-  из HuggingFace; обе команды спрашивают подтверждение (`--yes`).
-- `systemd enable` — запуск через user-юнит с автоперезапуском; autostart при этом отключается.
-- Длительность записи: по умолчанию 5 минут, максимум 30 (`[audio] max_seconds`).
+- `repaste` and the tray item "Вставить последний текст" re-insert the last dictation.
+- `server install` sets up the server environment (venv + faster-whisper), `model download`
+  fetches a model from HuggingFace; both ask for confirmation (`--yes`).
+- `systemd enable` runs the app through a user unit with restart; autostart is disabled then.
+- Recording limit: 5 minutes by default, 30 maximum (`[audio] max_seconds`).
 
-## Ограничения (честно)
+## Limitations (honest)
 
-- Пока это KDE-приложение: хоткей работает через `org.kde.kglobalaccel` — проверено на
-  Plasma 6.8 (KWin), XDG-портал `GlobalShortcuts` не используется. На GNOME/Hyprland
-  назначьте `whisper-station toggle` на клавишу вручную — остальное заработает.
-- X11 не поддерживается: запись и вставка построены на PipeWire и `wl-copy`.
-- GPU только NVIDIA: `ctranslate2` не поддерживает Intel/AMD, там будет CPU.
-- HUD на время записи забирает фокус (KWin не даёт клавиатуру окну без фокуса, иначе
-  не работают Esc и кнопки). Перед вставкой HUD прячется, фокус возвращается в окно.
-- Позиция HUD задаётся правилом KWin «Whisper Station HUD» (верх экрана по центру):
-  Wayland не позволяет клиенту двигать окна. Правило видно и удаляется в
-  System Settings → Window Rules; отключается галочкой в настройках приложения.
-- Запись идёт через `pw-record`: `parec` на PipeWire не отдаёт данные, если stdout — pipe
-  (в файл пишет нормально), поэтому он оставлен только как запасной вариант.
-- Короткое нажатие хоткея (меньше 0.25 с) и тишина не считаются ошибкой и не показывают
-  уведомлений — только реальные сбои. Запись ниже порога тишины не отправляется в модель,
-  а типовые «субтитры/музыка» от Whisper отфильтровываются.
-- Восстановление буфера отложено на 1.5 с: Wayland отдаёт данные вставки асинхронно.
-- Трей — StatusNotifierItem средствами Qt; на KDE работает без `libayatana-appindicator`.
+- This is a KDE application for now: the hotkey goes through `org.kde.kglobalaccel`
+  (verified on Plasma 6.8 / KWin); the XDG `GlobalShortcuts` portal is not used. On
+  GNOME/Hyprland bind `whisper-station toggle` to a key manually — the rest works.
+- X11 is not supported: recording and insertion are built on PipeWire and `wl-copy`.
+- GPU only NVIDIA: `ctranslate2` has no Intel/AMD support, those machines use CPU.
+- The HUD takes focus while recording (KWin does not deliver the keyboard to an unfocused
+  window, otherwise `Esc` and the buttons would not work). Before insertion the HUD hides
+  and focus returns to the target window.
+- The HUD position is set by the KWin rule "Whisper Station HUD" (top center): Wayland
+  does not let a client move its windows. The rule is visible and removable in System
+  Settings → Window Rules; it can be turned off in the app settings.
+- Recording goes through `pw-record`: `parec` does not deliver data to a pipe on PipeWire,
+  so it is kept only as a fallback.
+- Short hotkey presses (<0.25 s) and silence are not errors and show no notifications; a
+  recording below the silence threshold is not sent to the model, and typical Whisper
+  "subtitles/music" hallucinations are filtered out.
+- Clipboard restore is delayed by 1.5 s: Wayland delivers the pasted data asynchronously.
+- The tray is a StatusNotifierItem implemented with Qt; it works on KDE without
+  `libayatana-appindicator`.
 
-## Удаление
+## Uninstall
 
 ```sh
-whisper-station server uninstall --yes     # окружение сервера
+whisper-station server uninstall --yes     # server environment
 sudo pacman -R whisper-station
 rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/whisper-station
 ```
 
-## Бренд
+## Brand and docs
 
-Иконка и палитра — в `brand/`: мастер `brand/app.svg`, экспорты, трей для светлой
-и тёмной панели, контактный лист `brand/board.png` и `brand/style-tile.html`.
-Характер, типографика, правила HUD и голос интерфейса — [docs/DESIGN.md](docs/DESIGN.md).
-Пересобрать: `python3 brand/make_board.py`. Иконка пакета совпадает с бренд-мастером
-(это проверяет тест).
+The icon and palette live in `brand/`: the master `brand/app.svg`, exports, tray icons for
+light and dark panels, the contact sheet `brand/board.png` and `brand/style-tile.html`.
+Character, typography, HUD rules and the interface voice are described in
+[docs/DESIGN.md](docs/DESIGN.md) (Russian). Rebuild with `python3 brand/make_board.py`.
 
-Лицензия: **GNU GPL v3** (`LICENSE`).
+Architecture and decisions — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+[docs/DECISIONS.md](docs/DECISIONS.md), checks — [docs/VERIFICATION.md](docs/VERIFICATION.md),
+plan — [docs/ROADMAP.md](docs/ROADMAP.md), the Handy breakdown —
+[docs/HANDY-ANALYSIS.md](docs/HANDY-ANALYSIS.md), publishing —
+[docs/RELEASE.md](docs/RELEASE.md), contributing — [CONTRIBUTING.md](CONTRIBUTING.md).
+Deep design documents are kept in Russian for now.
 
-Архитектура и решения — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/DECISIONS.md](docs/DECISIONS.md), проверки — [docs/VERIFICATION.md](docs/VERIFICATION.md), план — [docs/ROADMAP.md](docs/ROADMAP.md), разбор Handy — [docs/HANDY-ANALYSIS.md](docs/HANDY-ANALYSIS.md), публикация — [docs/RELEASE.md](docs/RELEASE.md), вклад — [CONTRIBUTING.md](CONTRIBUTING.md).
-
-Схема архитектуры (интерактивный HTML, генерируется Archify из `candidate.json`):
-`.archify/architecture-whisper-station-20261107-194924/whisper-station.html`.
+License: **GNU GPL v3** (`LICENSE`).

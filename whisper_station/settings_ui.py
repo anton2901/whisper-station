@@ -82,8 +82,8 @@ class SettingsDialog(QDialog):
         self._cfg = cfg
         self._server = server
         self.setWindowTitle(f"{APP_TITLE} — настройки")
-        self.setMinimumWidth(560)
-        self.resize(560, self._initial_height())
+        self.setMinimumWidth(600)
+        self.resize(600, self._initial_height())
         self.setModal(True)
 
         self._hotkey = QKeySequenceEdit(QKeySequence(cfg.hotkey), self)
@@ -226,6 +226,8 @@ class SettingsDialog(QDialog):
         scroll = QScrollArea(self)
         scroll.setWidget(content)
         scroll.setWidgetResizable(True)
+        # Длинные подписи (модель, сочетания) не должны рождать горизонтальный скролл.
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         layout = QVBoxLayout(self)
         layout.addWidget(scroll, 1)

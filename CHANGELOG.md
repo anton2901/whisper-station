@@ -34,6 +34,15 @@
   а не просто «сервер не ответил».
 - Смена модели, устройства или команды сервера перезапускает собственный сервер.
 
+### Документация
+
+- README на английском (`README.md` — основная страница GitHub) и русском
+  (`README.ru.md`), CONTRIBUTING — так же (`CONTRIBUTING.md` / `CONTRIBUTING.ru.md`).
+- Скриншоты HUD и окна настроек для README: `tools/screenshots.py` рисует их без живой
+  сессии (`QT_QPA_PLATFORM=offscreen`).
+- Окно настроек шире (600 px) и без горизонтальной прокрутки: длинные подписи больше
+  не обрезаются.
+
 ### Изменено
 
 - Поиск `run.sh` больше не смотрит в `~/Documents/dsh-set/.whisper-local`: основной
@@ -54,6 +63,15 @@
 - Диалог настроек прокручивается, чтобы влезать в экран ноутбука.
 
 ## [0.3.1] — 2026-11-08
+
+### Документация
+
+- README на английском (`README.md` — основная страница GitHub) и русском
+  (`README.ru.md`), CONTRIBUTING — так же (`CONTRIBUTING.md` / `CONTRIBUTING.ru.md`).
+- Скриншоты HUD и окна настроек для README: `tools/screenshots.py` рисует их без живой
+  сессии (`QT_QPA_PLATFORM=offscreen`).
+- Окно настроек шире (600 px) и без горизонтальной прокрутки: длинные подписи больше
+  не обрезаются.
 
 ### Изменено
 
@@ -101,6 +119,15 @@
 - `whisper-station systemd install|enable|disable|status` — user-юнит с автоперезапуском.
 - Схема архитектуры (Archify) в `.archify/`.
 - Лицензия GPL-3.0.
+
+### Документация
+
+- README на английском (`README.md` — основная страница GitHub) и русском
+  (`README.ru.md`), CONTRIBUTING — так же (`CONTRIBUTING.md` / `CONTRIBUTING.ru.md`).
+- Скриншоты HUD и окна настроек для README: `tools/screenshots.py` рисует их без живой
+  сессии (`QT_QPA_PLATFORM=offscreen`).
+- Окно настроек шире (600 px) и без горизонтальной прокрутки: длинные подписи больше
+  не обрезаются.
 
 ### Изменено
 

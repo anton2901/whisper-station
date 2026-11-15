@@ -14,8 +14,11 @@ bin/whisper-station doctor        # на живой машине всё зелё
 
 - [ ] `CHANGELOG.md` содержит `## [0.4.0]`, версии в `pyproject.toml`, `PKGBUILD`
       и `whisper_station/__init__.py` совпадают (это проверяет `tests/test_version.py`).
+- [ ] Скриншоты свежие: `QT_QPA_PLATFORM=offscreen python3 tools/screenshots.py`.
+- [ ] `README.md` (английский) и `README.ru.md` описывают текущее поведение.
 - [ ] `PKGBUILD`: поле `url` заполнено адресом репозитория (сейчас пустое).
-- [ ] В `README.md` установка, модель и ограничения описывают текущее поведение.
+- [ ] В `README.md` / `README.ru.md` установка, модель и ограничения описывают текущее
+      поведение.
 
 ## 2. Репозиторий
 
@@ -44,18 +47,31 @@ makepkg -f --nocheck              # whisper-station-0.4.0-1-any.pkg.tar.zst
 В описании релиза — короткий блок «что нового» из `CHANGELOG.md` и команды установки
 из `README.md`.
 
-## 4. Проверка после публикации
+## 4. Чистая проверка перед релизом (обязательно)
+
+Полностью снести установленное и поставить заново скриптом — это ловит всё, что
+забыли упаковать:
+
+```sh
+whisper-station server uninstall --yes
+sudo pacman -R whisper-station
+rm -rf ~/.config/whisper-station ~/.local/state/whisper-station ~/.local/share/whisper-station
+
+cd ~/Documents/av-wisper-linux
+./install.sh          # зависимости, пакет, сервер, модель, автозапуск, doctor
+```
+
+Затем проверить вживую: хоткей, HUD, `Esc`, вставка в обычное окно и терминал.
+
+## 5. Проверка после публикации
 
 ```sh
 git clone https://github.com/<owner>/whisper-station.git /tmp/ws-check
 cd /tmp/ws-check && ./install.sh                # весь путь установки как у пользователя
-sudo pacman -U whisper-station-0.4.0-1-any.pkg.tar.zst
-whisper-station server install --cuda
-whisper-station model download --name large-v3-turbo --yes
 whisper-station doctor
 ```
 
-## 5. AUR (следующим шагом)
+## 6. AUR (следующим шагом)
 
 1. `PKGBUILD`: `source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")`,
    `sha256sums=('…')` из архива релиза; `url` — адрес репозитория.
