@@ -1,0 +1,46 @@
+name: release
+
+# Тег v* → пакет Arch и черновик релиза на GitHub с приложенным .pkg.tar.zst.
+# Остаётся нажать Publish в разделе Releases.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Пакеты
+        run: |
+          pacman -Syu --noconfirm --needed \
+            git github-cli python pyside6 python-dbus python-gobject \
+            pipewire wl-clipboard libnotify
+
+      - uses: actions/checkout@v4
+
+      - name: Линт и тесты
+        run: make lint && make test
+
+      - name: Сборка пакета
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+          su builder -c 'makepkg -f --nocheck'
+
+      - name: Черновик релиза
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --generate-notes \
+            --title "whisper-station $version" \
+            whisper-station-*.pkg.tar.zst

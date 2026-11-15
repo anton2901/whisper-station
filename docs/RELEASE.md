@@ -32,22 +32,23 @@ git push -u origin main
 ## 3. Тег и релиз
 
 ```sh
+make release          # линт, тесты, тег vX.Y.Z, push тега
+```
+
+Тег запускает `.github/workflows/release.yml`: он собирает пакет, создаёт **черновик**
+релиза с приложенным `whisper-station-X.Y.Z-1-any.pkg.tar.zst` и автоматическими
+release notes. Остаётся открыть Releases и нажать **Publish** — вписывать ничего не нужно.
+
+Ручной путь, если Actions недоступны:
+
+```sh
 git tag -a v0.4.0 -m "whisper-station 0.4.0"
 git push origin v0.4.0
 ```
 
-Дальше на GitHub: **Releases → Draft a new release**. Это просто форма поверх тега,
-ничего не создаётся до кнопки Publish. Заполнить нужно минимум:
-
-1. **Choose a tag** — выбрать `v0.4.0` (он уже есть после `git push origin v0.4.0`).
-2. **Release title** — `whisper-station 0.4.0` (можно оставить пустым, будет `v0.4.0`).
-3. **Describe this release** — нажать **Generate release notes**: GitHub сам подставит
-   список коммитов. Писать руками не нужно.
-4. **Attach binaries** — перетащить только `whisper-station-0.4.0-1-any.pkg.tar.zst`.
-   Архивы исходников (`Source code.zip/tar.gz`) GitHub добавляет сам, `git archive` не нужен.
-5. **Publish release**.
-
-Если описание хочется по-человечески, вот готовый текст:
+Дальше: Releases → Draft a new release → выбрать тег → **Generate release notes** →
+приложить `whisper-station-*.pkg.tar.zst` (архивы исходников GitHub добавляет сам) →
+Publish. Готовый текст описания, если автогенерация не нравится:
 
 ```markdown
 Первая публичная версия для CachyOS/Arch (KDE Plasma 6, Wayland).
